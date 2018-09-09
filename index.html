@@ -1,0 +1,226 @@
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="description" content="w65c02s emulator">
+  <meta name="author" content="John Clark">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>w65c02s emulator</title>
+  <style type="text/css">
+    body {
+        margin: 0px;
+        padding: 0px;
+        border: 0px;        
+        font-size: 13px;
+        font-family: "Lucida Console", Monaco, monospace;
+        background: #e1e1d0;
+    }
+    #regdisp {
+        margin-top: .8em;
+        margin-bottom: .8em;
+        padding: 1em;
+        border: 1px solid #999;
+        width: 24em;
+        background: #f5f5ef;
+    }
+    button {
+        margin: .2em;
+        border: 1px solid #c5c5c5;
+        border-radius: 3px;
+        width: 6em;
+        height: 2em;
+        font-size: 14px;
+        color: #f5f5ef;
+        background: #734d26;
+    }
+    .row {
+        padding: 4em;
+        display: flex;
+    }
+    .col1 {
+        float: left;
+        padding: 1em;
+        min-width: 31em;
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+    .col2 {
+        float: left;
+        padding: 1em;
+        min-width: 20em;
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+    .col3 {
+        float: left;
+        flex: 1;
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+    .row:after {
+        content: "";
+        display: table;
+        clear: both;
+    }
+    .hexdata {
+        margin-top: 4em;
+    }
+    .hexdata>div {
+        font-size: 11px;
+    }
+    .hexdata>div>span {
+        padding: 1px;
+    }
+    .hexdata>div>span.active {
+        background: #fc5b2f;
+        xbackground: #28f;
+    }
+    .hexdata>div>input:not([type=checkbox]) {
+        margin: 4px;
+        padding-left: 1em; 
+        width: 6em;
+        font-size: 12px;
+        border: 1px solid #c5c5c5;
+        background: #fefef7;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="row">
+
+    <div class="col1">
+      <div id="regdisp">
+        <div>a = 00&nbsp;&nbsp;&nbsp;pc = 0000</div>
+        <div>x = 00&nbsp;&nbsp;&nbsp;sp =&nbsp;&nbsp;&nbsp;ff&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;n v . b&nbsp;&nbsp;d i z c</div>
+        <div>y = 00&nbsp;&nbsp;&nbsp;sf =&nbsp;&nbsp;&nbsp;00&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0 0 + 0&nbsp;&nbsp;0 0 0 0</div>
+      </div>
+      <div><button id="step" style="">step</button></div>
+      <div id="output" style="margin: 1em; margin-top: 2em;"></div>
+    </div>
+
+    <div class="col2">
+      <div class="hexdata">
+        <div><span></span><input> 2000 <input type="checkbox"></div>
+        <div><span></span><input> 2001 <input type="checkbox"></div>
+        <div><span></span><input> 2002 <input type="checkbox"></div>
+        <div><span></span><input> 2003 <input type="checkbox"></div>
+        <div><span></span><input> 2004 <input type="checkbox"></div>
+        <div><span></span><input> 2005 <input type="checkbox"></div>
+        <div><span></span><input> 2006 <input type="checkbox"></div>
+        <div><span></span><input> 2007 <input type="checkbox"></div>
+    </div>
+    </div>
+
+    <div class="col3">
+    </div>
+  </div>
+
+
+  <script src="w65c02s.js"></script>
+  <script type="text/javascript">
+    const cpu = new W65C02S();
+    var cycles;
+    var output;
+    var hexval;
+
+    function setup() {
+        cpu.mem[0x0100] = 0xbe;
+        cpu.mem[0x0101] = 0xef;
+
+        cpu.mem[0x0000] = 0xad;
+        cpu.mem[0x0001] = 0x00;
+        cpu.mem[0x0002] = 0x01;
+
+        cpu.mem[0x0003] = 0x09;
+        cpu.mem[0x0004] = 0xf0;
+
+        //clc
+        cpu.mem[0x2000] = 0x18;
+        //sec
+//        cpu.mem[0x2000] = 0x38;
+        //sed
+//        cpu.mem[0x2001] = 0xf8;
+        //lda
+        cpu.mem[0x2001] = 0xa9;
+        cpu.mem[0x2002] = 0x01;
+        //adc
+        cpu.mem[0x2003] = 0x69;
+        cpu.mem[0x2004] = 0xff;
+
+        for(let i=0; i<8; i++) {
+            hexval[i].value = cpu.mem[0x2000 + i].toString(16).padStart(2, '0');
+        }
+
+        cpu.set_pc(0x2000);
+        hexval[0].parentNode.firstChild.classList.add('active');
+        update_regs(cpu.get_regs());
+        cycles = 0;
+    }
+
+    function step() {
+        for(let i=0; i<8; i++) {
+            cpu.mem[0x2000 + i] = parseInt(hexval[i].value, 16);
+        }
+
+        const res = cpu.step();
+        if(res < 1) {
+            message("step returned: " + res);
+            return;
+        }
+        cycles += res;
+
+        const regs = cpu.get_regs();
+        update_regs(regs);
+        message("cycles: " + cycles, true);
+
+        for(let i=0; i<8; i++) {
+            if(i == (regs.pc-0x2000)) {
+                hexval[i].parentNode.firstChild.classList.add('active');
+            } else {
+                hexval[i].parentNode.firstChild.classList.remove('active');
+            }
+        }
+    }
+
+    function message(text, c) {
+        if(!text || c) {
+            output.innerHTML = "";
+            if(!c) return;
+        }
+        output.innerHTML += ("<p>" + text + "</p>");
+    }
+
+    function update_regs(reg) {
+        var flag_str;
+        flag_str  = (reg.flags & 0x80) ? "1 " : "0 ";
+        flag_str += (reg.flags & 0x40) ? "1 " : "0 ";
+        flag_str += "+ ";
+        flag_str += (reg.flags & 0x10) ? "1 " : "0 ";
+        flag_str += "&nbsp;";
+        flag_str += (reg.flags & 0x08) ? "1 " : "0 ";
+        flag_str += (reg.flags & 0x04) ? "1 " : "0 ";
+        flag_str += (reg.flags & 0x02) ? "1 " : "0 ";
+        flag_str += (reg.flags & 0x01) ? "1 " : "0 ";
+
+        regdisp.innerHTML  = "<div>a = " +reg.a.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;pc = " +reg.pc.toString(16).padStart(4, '0')+ "</div>";
+        regdisp.innerHTML += "<div>x = " +reg.x.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;sp = &nbsp;&nbsp;" +reg.sp.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;n v . b &nbsp;d i z c</div>";
+        regdisp.innerHTML += "<div>y = " +reg.y.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;sf = &nbsp;&nbsp;" +reg.flags.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" +flag_str+ "</div>";
+    }
+
+    function init() {
+        output = document.getElementById("output");
+        regdisp = document.getElementById("regdisp");
+        hexval = document.querySelectorAll("div.hexdata>div>input:not([type=checkbox]");
+        document.getElementById("step").addEventListener("click", step);
+        setup();
+    }
+
+    if(document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+    } else {
+        init();
+    }        
+  </script>
+</body>
+</html>
+
