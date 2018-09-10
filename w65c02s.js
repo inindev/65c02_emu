@@ -33,8 +33,8 @@ function W65C02S()
     const flag_c = 0x01;
 
 
-    //                                         n v . b  d i z c
-    // ADC   A + M + C -> A, C                 + + 1 -  - - + +
+    //                                         n v b d i z c
+    // ADC   A + M + C -> A, C                 + + - - - + +
     //
     function adc(memfn) {
         const n1 = memfn.read();
@@ -63,8 +63,8 @@ function W65C02S()
         return memfn.cycles;
     }
 
-    //                                         n v . b  d i z c
-    // AND   A & M -> A                        + - 1 -  - - + -
+    //                                         n v b d i z c
+    // AND   A & M -> A                        + - - - - + -
     //
     function and(memfn) {
         r_a &= memfn.read();
@@ -73,8 +73,8 @@ function W65C02S()
         return memfn.cycles;
     }
 
-    //                                         n v . b  d i z c
-    // ASL   C <- [76543210] <- 0              + - 1 -  - - + +
+    //                                         n v b d i z c
+    // ASL   C <- [76543210] <- 0              + - - - - + +
     //
     function asl(memfn) {
         const val = memfn.read();
@@ -86,66 +86,107 @@ function W65C02S()
         return memfn.cycles;
     }
 
-    //                                         n v . b  d i z c
-    // BBRb   Branch on bit b reset            - - 1 -  - - - -
+    //                                         n v b d i z c
+    // BBRb   Branch on bit b reset            - - - - - - -
     //
     function bbr(b) {
         return {["bbr"+b]: (memfn) => {
             const val = memfn.read();
             const offs = memfn.offset();
-            if(!((val >> b) & 0x01)) memfn.write(offs);
+            if(!((val >> b) & 0x01)) {
+                memfn.branch(offs);
+                return memfn.cycles + 1;
+            }
             return memfn.cycles;
         }}["bbr"+b];
     };
 
-    //                                         n v . b  d i z c
-    // BBSb   Branch on bit b set              - - 1 -  - - - -
+    //                                         n v b d i z c
+    // BBSb   branch on bit b set              - - - - - - -
     //
     function bbs(b) {
         return {["bbs"+b]: (memfn) => {
             const val = memfn.read();
             const offs = memfn.offset();
-            if((val >> b) & 0x01) memfn.write(offs);
+            if((val >> b) & 0x01) {
+                memfn.branch(offs);
+                return memfn.cycles + 1;
+            }
             return memfn.cycles;
         }}["bbs"+b];
     };
 
+
+    //                                         n v b d i z c
+    // BCC   branch on C = 0                   - - - - - - -
+    //
+    function bcc(memfn) {
+        const offs = memfn.offset();
+        if(!(r_flags & flag_c)) {
+            memfn.branch(offs);
+            return memfn.cycles + 1;
+        }
+        return memfn.cycles;
+    };
+    //                                         n v b d i z c
+    // BCS   branch on C = 1                   - - - - - - -
+    //
+    function bcs(memfn) {
+        const offs = memfn.offset();
+        if(r_flags & flag_c) {
+            memfn.branch(offs);
+            return memfn.cycles + 1;
+        }
+        return memfn.cycles;
+    };
+    //                                         n v b d i z c
+    // BEQ   branch on Z = 1                   - - - - - - -
+    //
+    function beq(memfn) {
+        const offs = memfn.offset();
+        if(r_flags & flag_z) {
+            memfn.branch(offs);
+            return memfn.cycles + 1;
+        }
+        return memfn.cycles;
+    };
+
 // TODO: clear decimal?  interrupt & push pc / sr?
-    //                                         n v . b  d i z c
-    // BRK   Break                             - - 1 1  - 1 - -
+    //                                         n v b d i z c
+    // BRK   Break                             - - 1 - 1 - -
     //
     function brk(memfn) {
         r_flags = (r_flags | flag_b);
-//        r_flags = (r_flags | flag_i);
+        r_flags = (r_flags | flag_i);
         return memfn.cycles;
     }
 
-    //                                         n v . b  d i z c
-    // CLC   C -> 0                            - - - - - 0
+    //                                         n v b d i z c
+    // CLC   C -> 0                            - - - - - - 0
     //
     function clc(memfn) {
         r_flags = (r_flags & ~flag_c);
         return memfn.cycles;
     }
 
-    //                                         n v . b  d i z c
-    // CLD   D -> 0                            - - 1 -  0 - - -
+    //                                         n v b d i z c
+    // CLD   D -> 0                            - - - 0 - - -
     //
     function cld(memfn) {
         r_flags = (r_flags & ~flag_d);
         return memfn.cycles;
     }
 
-    //                                         n v . b  d i z c
-    // CLI   I -> 0                            - - 1 -  - 0 - -
+    //                                         n v b d i z c
+    // CLI   I -> 0                            - - - - 0 - -
     //
     function cli(memfn) {
         r_flags = (r_flags & ~flag_i);
         return memfn.cycles;
     }
 
-    //                                         n v . b  d i z c
-    // LDA   M -> A                            + - 1 -  - - + -
+    //                                         n v b d i z c
+    // LDA   M -> A                            + - - - - + -
     //
     function lda(memfn) {
         r_a = memfn.read();
@@ -154,8 +195,8 @@ function W65C02S()
         return memfn.cycles;
     }
 
-    //                                         n v . b  d i z c
-    // ORA   A | M -> A                        + - 1 -  - - + -
+    //                                         n v b d i z c
+    // ORA   A | M -> A                        + - - - - + -
     //
     function ora(memfn) {
         r_a |= memfn.read();
@@ -164,16 +205,16 @@ function W65C02S()
         return memfn.cycles;
     }
 
-    //                                         n v . b  d i z c
-    // SEC   1 -> C                            - - 1 -  - - - 1
+    //                                         n v b d i z c
+    // SEC   1 -> C                            - - - - - - 1
     //
     function sec(memfn) {
         r_flags = (r_flags | flag_c);
         return memfn.cycles;
     }
 
-    //                                         n v . b  d i z c
-    // SED   1 -> D                            - - 1 -  1 - - -
+    //                                         n v b d i z c
+    // SED   1 -> D                            - - - 1 - - -
     //
     function sed(memfn) {
         r_flags = (r_flags | flag_d);
@@ -203,91 +244,117 @@ function W65C02S()
         absolute: {
             read:  () => { return read_byte(pc_pop_word()); },
             write: (val) =>    { write_byte(pc_pop_word(), val); },
-            cycles: 3
+            bytes: 2,
+            cycles: 4  // TODO: +2 on write
         },
         // 2. Absolute Indexed Indirect  (a,x)   (used for jmp)
         absolute_x_indirect: {
             read:  () => { return read_word(pc_pop_word() + r_x); },
-            cycles: 3
+            bytes: 2,
+            cycles: 5
         },
         // 3. Absolute Indexed with X  a,x
         absolute_x: {
             read:  () => { return read_byte(pc_pop_word() + r_x); },
             write: (val) =>    { write_byte(pc_pop_word() + r_x, val); },
-            cycles: 3
+            bytes: 2,
+            cycles: 4  // TODO: +1 page boundary, +2 on write
         },
         // 4. Absolute Indexed with Y  a,y
         absolute_y: {
             read:  () => { return read_byte(pc_pop_word() + r_y); },
-            write: (val) =>    { write_byte(pc_pop_word() + r_y, val); },
-            cycles: 3
+            //write: (val) =>    { write_byte(pc_pop_word() + r_y, val); },
+            bytes: 2,
+            cycles: 4  // TODO: +1 page boundary
         },
         // 5. Absolute Indirect  (a)   (used for jmp)
         absolute_indirect: {
             read:  () => { return read_word(pc_pop_word()); },
-            cycles: 3
+            bytes: 2,
+            cycles: 4  // TODO: +2 on write
         },
         // 6. Accumulator  A
         accumulator: {
             read:  () => { return r_a; },
             write: (val) => { r_a = (val & 0xff); },
-            cycles: 1
+            bytes: 0,
+            cycles: 2
         },
         // 7. Immediate  #
         immediate: {
             read: pc_pop_byte,
+            bytes: 1,
             cycles: 2
         },
         // 8. Implied  i
         implied: {
-            cycles: 1
+            bytes: 0,
+            cycles: 2
         },
-        // 9. Program Counter Relative  r
+        // 9a. Program Counter Relative  r
         relative_pc: {
+            offset: pc_pop_byte,
+            branch: (offs) => { r_pc += (offs & 0xff); if(offs & 0x80) r_pc -= 0x100; },
+            bytes: 1,
+            cycles: 2  // +1 if branch
+        },
+        // 9b. Zero Page Program Counter Relative  r
+        //     note: not explicity described in the w65c02s datasheet
+        //           but applies to BBRb zp,offs and BBSb zp,offs operations
+        //           BBRb and BBSb are three byte operations
+        zero_page_relative_pc: {
             read: () => { return read_byte(pc_pop_byte()); },
             offset: pc_pop_byte,
-            write: (offs) => { r_pc += (offs & 0x80) ? (offs & 0xff) - 0x100 : (offs & 0xff) },
-            cycles: 2
+            branch: (offs) => { r_pc += (offs & 0xff); if(offs & 0x80) r_pc -= 0x100; },
+            bytes: 2,
+            cycles: 2  // +1 if branch
         },
         // 10. Stack  s
         relative_stack: {
-            cycles: 1 // TODO: 1-4            
+            bytes: 0,  // TODO: up to +3 stack bytes
+            cycles: 3  // TODO: +4 possible 
         },
         // 11. Zero Page  zp
         zero_page: {
             read:  () => { return read_byte(pc_pop_byte()); },
             write: (val) =>    { write_byte(pc_pop_byte(), val); },
-            cycles: 2
+            bytes: 1,
+            cycles: 3  // TODO: +2 on write
         },
         // 12. Zero Page Indexed Indirect  (zp,x)
         zero_page_x_indirect: {
             read:  () => { return read_byte(read_word((pc_pop_byte() + r_x) & 0xff)); },
             write: (val) =>    { write_byte(read_word((pc_pop_byte() + r_x) & 0xff), val); },
-            cycles: 2
+            bytes: 1,
+            cycles: 6
         },
         // 13. Zero Page Indexed with X  zp,x
         zero_page_x: {
             read:  () => { return read_byte((pc_pop_byte() + r_x) & 0xff); },
             write: (val) =>   { write_byte(((pc_pop_byte() + r_x) & 0xff), val); },
-            cycles: 2
+            bytes: 1,
+            cycles: 4  // TODO: +2 on write
         },
         // 14. Zero Page Indexed with Y  zp,y
         zero_page_y: {
             read:  () => { return read_byte((pc_pop_byte() + r_y) & 0xff); },
             write: (val) =>   { write_byte(((pc_pop_byte() + r_y) & 0xff), val); },
-            cycles: 2
+            bytes: 1,
+            cycles: 4  // TODO: +2 on write
         },
         // 15. Zero Page Indirect  (zp)
         zero_page_indirect: {
             read:  () => { return read_byte(read_word(pc_pop_byte())); },
             write: (val) =>    { write_byte(read_word(pc_pop_byte()), val); },
-            cycles: 2
+            bytes: 1,
+            cycles: 5
         },
         // 16. Zero Page Indirect Indexed with Y  (zp),y
         zero_page_indirect_y: {
             read:  () => { return read_byte((read_word(pc_pop_byte()) + r_y) & 0xffff); },
             write: (val) =>   { write_byte(((read_word(pc_pop_byte()) + r_y) & 0xffff), val); },
-            cycles: 2
+            bytes: 1,
+            cycles: 5
         }
     };
 
@@ -319,23 +386,27 @@ function W65C02S()
         0x06: [asl, am.zero_page],
         0x16: [asl, am.zero_page_x],
 
-        0x0f: [bbr(0), am.relative_pc],
-        0x1f: [bbr(1), am.relative_pc],
-        0x2f: [bbr(2), am.relative_pc],
-        0x3f: [bbr(3), am.relative_pc],
-        0x4f: [bbr(4), am.relative_pc],
-        0x5f: [bbr(5), am.relative_pc],
-        0x6f: [bbr(6), am.relative_pc],
-        0x7f: [bbr(7), am.relative_pc],
+        0x0f: [bbr(0), am.zero_page_relative_pc],
+        0x1f: [bbr(1), am.zero_page_relative_pc],
+        0x2f: [bbr(2), am.zero_page_relative_pc],
+        0x3f: [bbr(3), am.zero_page_relative_pc],
+        0x4f: [bbr(4), am.zero_page_relative_pc],
+        0x5f: [bbr(5), am.zero_page_relative_pc],
+        0x6f: [bbr(6), am.zero_page_relative_pc],
+        0x7f: [bbr(7), am.zero_page_relative_pc],
 
-        0x8f: [bbs(0), am.relative_pc],
-        0x9f: [bbs(1), am.relative_pc],
-        0xaf: [bbs(2), am.relative_pc],
-        0xbf: [bbs(3), am.relative_pc],
-        0xcf: [bbs(4), am.relative_pc],
-        0xdf: [bbs(5), am.relative_pc],
-        0xef: [bbs(6), am.relative_pc],
-        0xff: [bbs(7), am.relative_pc],
+        0x8f: [bbs(0), am.zero_page_relative_pc],
+        0x9f: [bbs(1), am.zero_page_relative_pc],
+        0xaf: [bbs(2), am.zero_page_relative_pc],
+        0xbf: [bbs(3), am.zero_page_relative_pc],
+        0xcf: [bbs(4), am.zero_page_relative_pc],
+        0xdf: [bbs(5), am.zero_page_relative_pc],
+        0xef: [bbs(6), am.zero_page_relative_pc],
+        0xff: [bbs(7), am.zero_page_relative_pc],
+
+        0x90: [bcc, am.relative_pc],
+        0xb0: [bcs, am.relative_pc],
+        0xf0: [beq, am.relative_pc],
 
         0x00: [brk, am.relative_stack],
 
