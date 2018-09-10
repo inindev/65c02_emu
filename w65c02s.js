@@ -210,10 +210,9 @@ function W65C02S()
         return memfn.cycles + 1;
     }
 
-
 // TODO: clear decimal?  interrupt & push pc / sr?
     //                                            n v b d i z c
-    // BRK   Break                                - - 1 - 1 - -
+    // BRK   break                                - - 1 - 1 - -
     //
     function brk(memfn) {
         r_flags = (r_flags | flag_b);
@@ -222,7 +221,32 @@ function W65C02S()
     }
 
     //                                            n v b d i z c
-    // CLC   C -> 0                               - - - - - - 0
+    // BVC   branch on overflow clear (v = 0)     - - - - - - -
+    //
+    function bvc(memfn) {
+        const offs = memfn.offset();
+        if(!(r_flags & flag_v)) {
+            memfn.branch(offs);
+            return memfn.cycles + 1;
+        }
+        return memfn.cycles;
+    }
+
+    //                                            n v b d i z c
+    // BVS   branch on overflow set (v = 1)       - - - - - - -
+    //
+    function bvs(memfn) {
+        const offs = memfn.offset();
+        if(r_flags & flag_v) {
+            memfn.branch(offs);
+            return memfn.cycles + 1;
+        }
+        return memfn.cycles;
+    }
+
+
+    //                                            n v b d i z c
+    // CLC   c -> 0                               - - - - - - 0
     //
     function clc(memfn) {
         r_flags = (r_flags & ~flag_c);
@@ -230,7 +254,7 @@ function W65C02S()
     }
 
     //                                            n v b d i z c
-    // CLD   D -> 0                               - - - 0 - - -
+    // CLD   d -> 0                               - - - 0 - - -
     //
     function cld(memfn) {
         r_flags = (r_flags & ~flag_d);
@@ -238,7 +262,7 @@ function W65C02S()
     }
 
     //                                            n v b d i z c
-    // CLI   I -> 0                               - - - - 0 - -
+    // CLI   i -> 0                               - - - - 0 - -
     //
     function cli(memfn) {
         r_flags = (r_flags & ~flag_i);
@@ -246,7 +270,7 @@ function W65C02S()
     }
 
     //                                            n v b d i z c
-    // LDA   M -> A                               + - - - - + -
+    // LDA   m -> a                               + - - - - + -
     //
     function lda(memfn) {
         r_a = memfn.read();
@@ -256,7 +280,7 @@ function W65C02S()
     }
 
     //                                            n v b d i z c
-    // ORA   A | M -> A                           + - - - - + -
+    // ORA   a | m -> a                           + - - - - + -
     //
     function ora(memfn) {
         r_a |= memfn.read();
@@ -266,7 +290,7 @@ function W65C02S()
     }
 
     //                                            n v b d i z c
-    // SEC   1 -> C                               - - - - - - 1
+    // SEC   1 -> c                               - - - - - - 1
     //
     function sec(memfn) {
         r_flags = (r_flags | flag_c);
@@ -274,7 +298,7 @@ function W65C02S()
     }
 
     //                                            n v b d i z c
-    // SED   1 -> D                               - - - 1 - - -
+    // SED   1 -> d                               - - - 1 - - -
     //
     function sed(memfn) {
         r_flags = (r_flags | flag_d);
@@ -481,6 +505,9 @@ function W65C02S()
         0x80: [bra, am.relative_pc],
 
         0x00: [brk, am.relative_stack],
+
+        0x50: [bvc, am.relative_pc],
+        0x70: [bvs, am.relative_pc],
 
         0x18: [clc, am.implied],
         0xd8: [cld, am.implied],
