@@ -134,6 +134,15 @@
         cpu.mem[0x0003] = 0x09;
         cpu.mem[0x0004] = 0xf0;
 
+        cpu.mem[0x2000] = 0xa9;
+        cpu.mem[0x2001] = 0x06;
+        cpu.mem[0x2002] = 0x0a;
+        cpu.mem[0x2003] = 0x1f;
+        cpu.mem[0x2004] = 0x00;
+        cpu.mem[0x2005] = 0xfc;
+        cpu.mem[0x2006] = 0x09;
+        cpu.mem[0x2007] = 0x70;
+/*
         //clc
         cpu.mem[0x2000] = 0x18;
         //sec
@@ -146,7 +155,7 @@
         //adc
         cpu.mem[0x2003] = 0x69;
         cpu.mem[0x2004] = 0xff;
-
+*/
         for(let i=0; i<8; i++) {
             hexval[i].value = cpu.mem[0x2000 + i].toString(16).padStart(2, '0');
         }

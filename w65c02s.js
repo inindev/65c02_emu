@@ -86,6 +86,30 @@ function W65C02S()
         return memfn.cycles;
     }
 
+    //                                         n v . b  d i z c
+    // BBRb   Branch on bit b reset            - - 1 -  - - - -
+    //
+    function bbr(b) {
+        return {["bbr"+b]: (memfn) => {
+            const val = memfn.read();
+            const offs = memfn.offset();
+            if(!((val >> b) & 0x01)) memfn.write(offs);
+            return memfn.cycles;
+        }}["bbr"+b];
+    };
+
+    //                                         n v . b  d i z c
+    // BBSb   Branch on bit b set              - - 1 -  - - - -
+    //
+    function bbs(b) {
+        return {["bbs"+b]: (memfn) => {
+            const val = memfn.read();
+            const offs = memfn.offset();
+            if((val >> b) & 0x01) memfn.write(offs);
+            return memfn.cycles;
+        }}["bbs"+b];
+    };
+
 // TODO: clear decimal?  interrupt & push pc / sr?
     //                                         n v . b  d i z c
     // BRK   Break                             - - 1 1  - 1 - -
@@ -206,7 +230,7 @@ function W65C02S()
         // 6. Accumulator  A
         accumulator: {
             read:  () => { return r_a; },
-            write: (val) => { r_a = val; },
+            write: (val) => { r_a = (val & 0xff); },
             cycles: 1
         },
         // 7. Immediate  #
@@ -220,6 +244,9 @@ function W65C02S()
         },
         // 9. Program Counter Relative  r
         relative_pc: {
+            read: () => { return read_byte(pc_pop_byte()); },
+            offset: pc_pop_byte,
+            write: (offs) => { r_pc += (offs & 0x80) ? (offs & 0xff) - 0x100 : (offs & 0xff) },
             cycles: 2
         },
         // 10. Stack  s
@@ -291,6 +318,24 @@ function W65C02S()
         0x0a: [asl, am.accumulator],
         0x06: [asl, am.zero_page],
         0x16: [asl, am.zero_page_x],
+
+        0x0f: [bbr(0), am.relative_pc],
+        0x1f: [bbr(1), am.relative_pc],
+        0x2f: [bbr(2), am.relative_pc],
+        0x3f: [bbr(3), am.relative_pc],
+        0x4f: [bbr(4), am.relative_pc],
+        0x5f: [bbr(5), am.relative_pc],
+        0x6f: [bbr(6), am.relative_pc],
+        0x7f: [bbr(7), am.relative_pc],
+
+        0x8f: [bbs(0), am.relative_pc],
+        0x9f: [bbs(1), am.relative_pc],
+        0xaf: [bbs(2), am.relative_pc],
+        0xbf: [bbs(3), am.relative_pc],
+        0xcf: [bbs(4), am.relative_pc],
+        0xdf: [bbs(5), am.relative_pc],
+        0xef: [bbs(6), am.relative_pc],
+        0xff: [bbs(7), am.relative_pc],
 
         0x00: [brk, am.relative_stack],
 
