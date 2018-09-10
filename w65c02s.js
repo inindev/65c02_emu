@@ -33,8 +33,8 @@ function W65C02S()
     const flag_c = 0x01;
 
 
-    //                                         n v b d i z c
-    // ADC   A + M + C -> A, C                 + + - - - + +
+    //                                            n v b d i z c
+    // ADC   a + m + c -> a, c                    + + - - - + +
     //
     function adc(memfn) {
         const n1 = memfn.read();
@@ -58,36 +58,36 @@ function W65C02S()
         r_a = (sum & 0xff);
 
         r_flags = (r_a & 0x80) ? (r_flags | flag_n) : (r_flags & ~flag_n);
-        r_flags = (r_a ==0) ? (r_flags | flag_z) : (r_flags & ~flag_z);
+        r_flags = (r_a == 0) ? (r_flags | flag_z) : (r_flags & ~flag_z);
         r_flags = (sum > 0xff) ? (r_flags | flag_c) : (r_flags & ~flag_c);
         return memfn.cycles;
     }
 
-    //                                         n v b d i z c
-    // AND   A & M -> A                        + - - - - + -
+    //                                            n v b d i z c
+    // AND   a & m -> a                           + - - - - + -
     //
     function and(memfn) {
         r_a &= memfn.read();
         r_flags = (r_a & 0x80) ? (r_flags | flag_n) : (r_flags & ~flag_n);
-        r_flags = (r_a ==0) ? (r_flags | flag_z) : (r_flags & ~flag_z);
+        r_flags = (r_a == 0) ? (r_flags | flag_z) : (r_flags & ~flag_z);
         return memfn.cycles;
     }
 
-    //                                         n v b d i z c
-    // ASL   C <- [76543210] <- 0              + - - - - + +
+    //                                            n v b d i z c
+    // ASL   c <- [76543210] <- 0                 + - - - - + +
     //
     function asl(memfn) {
         const val = memfn.read();
         const res = val << 1;
         memfn.write(res);
         r_flags = (res & 0x80) ? (r_flags | flag_n) : (r_flags & ~flag_n);
-        r_flags = (res ==0) ? (r_flags | flag_z) : (r_flags & ~flag_z);
+        r_flags = (res == 0) ? (r_flags | flag_z) : (r_flags & ~flag_z);
         r_flags = (val & 0x80) ? (r_flags | flag_c) : (r_flags & ~flag_c);
         return memfn.cycles;
     }
 
-    //                                         n v b d i z c
-    // BBRb   Branch on bit b reset            - - - - - - -
+    //                                            n v b d i z c
+    // BBRb   branch on bit b reset               - - - - - - -
     //
     function bbr(b) {
         return {["bbr"+b]: (memfn) => {
@@ -101,8 +101,8 @@ function W65C02S()
         }}["bbr"+b];
     };
 
-    //                                         n v b d i z c
-    // BBSb   branch on bit b set              - - - - - - -
+    //                                            n v b d i z c
+    // BBSb   branch on bit b set                 - - - - - - -
     //
     function bbs(b) {
         return {["bbs"+b]: (memfn) => {
@@ -117,8 +117,8 @@ function W65C02S()
     };
 
 
-    //                                         n v b d i z c
-    // BCC   branch on C = 0                   - - - - - - -
+    //                                            n v b d i z c
+    // BCC   branch on carry clear (c = 0)        - - - - - - -
     //
     function bcc(memfn) {
         const offs = memfn.offset();
@@ -128,8 +128,8 @@ function W65C02S()
         }
         return memfn.cycles;
     };
-    //                                         n v b d i z c
-    // BCS   branch on C = 1                   - - - - - - -
+    //                                            n v b d i z c
+    // BCS   branch on carry set (c = 1)          - - - - - - -
     //
     function bcs(memfn) {
         const offs = memfn.offset();
@@ -139,8 +139,8 @@ function W65C02S()
         }
         return memfn.cycles;
     };
-    //                                         n v b d i z c
-    // BEQ   branch on Z = 1                   - - - - - - -
+    //                                            n v b d i z c
+    // BEQ   branch on result zero (z = 1)        - - - - - - -
     //
     function beq(memfn) {
         const offs = memfn.offset();
@@ -151,9 +151,69 @@ function W65C02S()
         return memfn.cycles;
     };
 
+    //                                            n  v  b d i z c
+    // BIT   a & m -> z, m7 -> n, m6 -> v         m7 m6 - - - - -
+    //
+    function bit(memfn) {
+        const val = memfn.read();
+        // a & m -> z
+        r_flags = (val & r_a) ? (r_flags | flag_z) : (r_flags & ~flag_z);
+        // m7 -> n
+        r_flags = (val & r_flags.n) ? (r_flags | flag_n) : (r_flags & ~flag_n);
+        // m6 -> v
+        r_flags = (val & r_flags.v) ? (r_flags | flag_v) : (r_flags & ~flag_v);
+        return memfn.cycles;
+    }
+
+    //                                            n v b d i z c
+    // BMI   branch on result minus (n = 1)       - - - - - - -
+    //
+    function bmi(memfn) {
+        const offs = memfn.offset();
+        if(r_flags & flag_n) {
+            memfn.branch(offs);
+            return memfn.cycles + 1;
+        }
+        return memfn.cycles;
+    }
+
+    //                                            n v b d i z c
+    // BNE   branch on result not zero (z = 0)    - - - - - - -
+    //
+    function bne(memfn) {
+        const offs = memfn.offset();
+        if(!(r_flags & flag_z)) {
+            memfn.branch(offs);
+            return memfn.cycles + 1;
+        }
+        return memfn.cycles;
+    }
+
+    //                                            n v b d i z c
+    // BPL   branch on result plus (n = 0)        - - - - - - -
+    //
+    function bpl(memfn) {
+        const offs = memfn.offset();
+        if(!(r_flags & flag_n)) {
+            memfn.branch(offs);
+            return memfn.cycles + 1;
+        }
+        return memfn.cycles;
+    }
+
+    //                                            n v b d i z c
+    // BRA   branch always                        - - - - - - -
+    //
+    function bra(memfn) {
+        const offs = memfn.offset();
+        memfn.branch(offs);
+        return memfn.cycles + 1;
+    }
+
+
 // TODO: clear decimal?  interrupt & push pc / sr?
-    //                                         n v b d i z c
-    // BRK   Break                             - - 1 - 1 - -
+    //                                            n v b d i z c
+    // BRK   Break                                - - 1 - 1 - -
     //
     function brk(memfn) {
         r_flags = (r_flags | flag_b);
@@ -161,60 +221,60 @@ function W65C02S()
         return memfn.cycles;
     }
 
-    //                                         n v b d i z c
-    // CLC   C -> 0                            - - - - - - 0
+    //                                            n v b d i z c
+    // CLC   C -> 0                               - - - - - - 0
     //
     function clc(memfn) {
         r_flags = (r_flags & ~flag_c);
         return memfn.cycles;
     }
 
-    //                                         n v b d i z c
-    // CLD   D -> 0                            - - - 0 - - -
+    //                                            n v b d i z c
+    // CLD   D -> 0                               - - - 0 - - -
     //
     function cld(memfn) {
         r_flags = (r_flags & ~flag_d);
         return memfn.cycles;
     }
 
-    //                                         n v b d i z c
-    // CLI   I -> 0                            - - - - 0 - -
+    //                                            n v b d i z c
+    // CLI   I -> 0                               - - - - 0 - -
     //
     function cli(memfn) {
         r_flags = (r_flags & ~flag_i);
         return memfn.cycles;
     }
 
-    //                                         n v b d i z c
-    // LDA   M -> A                            + - - - - + -
+    //                                            n v b d i z c
+    // LDA   M -> A                               + - - - - + -
     //
     function lda(memfn) {
         r_a = memfn.read();
         r_flags = (r_a & 0x80) ? (r_flags | flag_n) : (r_flags & ~flag_n);
-        r_flags = (r_a ==0) ? (r_flags | flag_z) : (r_flags & ~flag_z);
+        r_flags = (r_a == 0) ? (r_flags | flag_z) : (r_flags & ~flag_z);
         return memfn.cycles;
     }
 
-    //                                         n v b d i z c
-    // ORA   A | M -> A                        + - - - - + -
+    //                                            n v b d i z c
+    // ORA   A | M -> A                           + - - - - + -
     //
     function ora(memfn) {
         r_a |= memfn.read();
         r_flags = (r_a & 0x80) ? (r_flags | flag_n) : (r_flags & ~flag_n);
-        r_flags = (r_a ==0) ? (r_flags | flag_z) : (r_flags & ~flag_z);
+        r_flags = (r_a == 0) ? (r_flags | flag_z) : (r_flags & ~flag_z);
         return memfn.cycles;
     }
 
-    //                                         n v b d i z c
-    // SEC   1 -> C                            - - - - - - 1
+    //                                            n v b d i z c
+    // SEC   1 -> C                               - - - - - - 1
     //
     function sec(memfn) {
         r_flags = (r_flags | flag_c);
         return memfn.cycles;
     }
 
-    //                                         n v b d i z c
-    // SED   1 -> D                            - - - 1 - - -
+    //                                            n v b d i z c
+    // SED   1 -> D                               - - - 1 - - -
     //
     function sed(memfn) {
         r_flags = (r_flags | flag_d);
@@ -223,22 +283,23 @@ function W65C02S()
 
 
     // addressing modes, pp.15-20
-    //     1: absolute              // a       Absolute
-    //     2: absolute_x_indirect   // (a,x)   Absolute Indexed Indirect
-    //     3: absolute_x            // a,x     Absolute Indexed with X
-    //     4: absolute_y            // a,y
-    //     5: absolute_indirect,    // (a)     Absolute Indirect
-    //     6: accumulator,          // A       Accumulator
-    //     7: immediate,            // #       Immediate Addressing
-    //     8: implied,              // i       Implied
-    //     9: relative_pc,          // r       Program Counter Relative
-    //    10: relative_stack,       // s       Stack
-    //    11: zero_page,            // zp      Zero Page
-    //    12: zero_page_x_indirect, // (zp,x)  Zero Page Indexed Indirect
-    //    13: zero_page_x,          // zp,x    Zero Page Indexed with X
-    //    14: zero_page_y,          // zp,y    Zero Page Indexed with Y
-    //    15: zero_page_indirect,   // (zp)    Zero Page Indirect
-    //    16: zero_page_indirect_y  // (zp),y  Zero Page Indirect Indexed with Y
+    //     1: absolute                 a       Absolute
+    //     2: absolute_x_indirect      (a,x)   Absolute Indexed Indirect
+    //     3: absolute_x               a,x     Absolute Indexed with X
+    //     4: absolute_y               a,y     Absolute Indexed with Y
+    //     5: absolute_indirect        (a)     Absolute Indirect
+    //     6: accumulator              A       Accumulator
+    //     7: immediate                #       Immediate Addressing
+    //     8: implied                  i       Implied
+    //    9a: relative_pc              r       Program Counter Relative
+    //    9b: zero_page_relative_pc    zp,r    Zero Page Program Counter Relative
+    //    10: relative_stack           s       Stack
+    //    11: zero_page                zp      Zero Page
+    //    12: zero_page_x_indirect     (zp,x)  Zero Page Indexed Indirect
+    //    13: zero_page_x              zp,x    Zero Page Indexed with X
+    //    14: zero_page_y              zp,y    Zero Page Indexed with Y
+    //    15: zero_page_indirect       (zp)    Zero Page Indirect
+    //    16: zero_page_indirect_y     (zp),y  Zero Page Indirect Indexed with Y
     const am = {
         // 1. Absolute  a
         absolute: {
@@ -407,6 +468,17 @@ function W65C02S()
         0x90: [bcc, am.relative_pc],
         0xb0: [bcs, am.relative_pc],
         0xf0: [beq, am.relative_pc],
+
+        0x2c: [bit, am.absolute],
+        0x3c: [bit, am.absolute_x],
+        0x89: [bit, am.immediate],
+        0x24: [bit, am.zero_page],
+        0x34: [bit, am.zero_page_x],
+
+        0x30: [bmi, am.relative_pc],
+        0xd0: [bne, am.relative_pc],
+        0x10: [bpl, am.relative_pc],
+        0x80: [bra, am.relative_pc],
 
         0x00: [brk, am.relative_stack],
 
