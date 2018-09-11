@@ -157,7 +157,7 @@ function W65C02S()
     function bit(memfn) {
         const val = memfn.read();
         // a & m -> z
-        r_flags = (val & r_a) ? (r_flags | flag_z) : (r_flags & ~flag_z);
+        r_flags = ((val & r_a) == 0) ? (r_flags | flag_z) : (r_flags & ~flag_z);
         // m7 -> n
         r_flags = (val & r_flags.n) ? (r_flags | flag_n) : (r_flags & ~flag_n);
         // m6 -> v
@@ -270,6 +270,52 @@ function W65C02S()
     }
 
     //                                            n v b d i z c
+    // CLV   v -> 0                               - 0 - - - - -
+    //
+    function clv(memfn) {
+        r_flags = (r_flags & ~flag_v);
+        return memfn.cycles;
+    }
+
+
+    //                                            n v b d i z c
+    // CMP   a-m                                  + - - - - + +
+    //
+    function cmp(memfn) {
+        const val = memfn.read();
+        const diff = (r_a + (val ^ 0xff) + 1);
+        r_flags = (diff & 0x80) ? (r_flags | flag_n) : (r_flags & ~flag_n);
+        r_flags = ((diff & 0xff) == 0) ? (r_flags | flag_z) : (r_flags & ~flag_z);
+        r_flags = (diff > 0xff) ? (r_flags | flag_c) : (r_flags & ~flag_c);
+        return memfn.cycles;
+    }
+
+    //                                            n v b d i z c
+    // CPX   x-m                                  + - - - - + +
+    //
+    function cpx(memfn) {
+        const val = memfn.read();
+        const diff = (r_x + (val ^ 0xff) + 1);
+        r_flags = (diff & 0x80) ? (r_flags | flag_n) : (r_flags & ~flag_n);
+        r_flags = ((diff & 0xff) == 0) ? (r_flags | flag_z) : (r_flags & ~flag_z);
+        r_flags = (diff > 0xff) ? (r_flags | flag_c) : (r_flags & ~flag_c);
+        return memfn.cycles;
+    }
+
+    //                                            n v b d i z c
+    // CPY   y-m                                  + - - - - + +
+    //
+    function cpy(memfn) {
+        const val = memfn.read();
+        const diff = (r_y + (val ^ 0xff) + 1);
+        r_flags = (diff & 0x80) ? (r_flags | flag_n) : (r_flags & ~flag_n);
+        r_flags = ((diff & 0xff) == 0) ? (r_flags | flag_z) : (r_flags & ~flag_z);
+        r_flags = (diff > 0xff) ? (r_flags | flag_c) : (r_flags & ~flag_c);
+        return memfn.cycles;
+    }
+
+
+    //                                            n v b d i z c
     // LDA   m -> a                               + - - - - + -
     //
     function lda(memfn) {
@@ -305,6 +351,13 @@ function W65C02S()
         return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // SEI   1 -> d                               - - - - 1 - -
+    //
+    function sei(memfn) {
+        r_flags = (r_flags | flag_d);
+        return memfn.cycles;
+    }
 
     // addressing modes, pp.15-20
     //     1: absolute                 a       Absolute
@@ -512,6 +565,26 @@ function W65C02S()
         0x18: [clc, am.implied],
         0xd8: [cld, am.implied],
         0x58: [cli, am.implied],
+        0xb8: [clv, am.implied],
+
+        0xcd: [cmp, am.absolute],
+        0xdd: [cmp, am.absolute_x],
+        0xd9: [cmp, am.absolute_y],
+        0xc9: [cmp, am.immediate],
+        0xc5: [cmp, am.zero_page],
+        0xc1: [cmp, am.zero_page_x_indirect],
+        0xd5: [cmp, am.zero_page_x],
+        0xd2: [cmp, am.zero_page_indirect],
+        0xd1: [cmp, am.zero_page_indirect_y],
+
+        0xec: [cpx, am.absolute],
+        0xe0: [cpx, am.immediate],
+        0xe4: [cpx, am.zero_page],
+
+        0xcc: [cpy, am.absolute],
+        0xc0: [cpy, am.immediate],
+        0xc4: [cpy, am.zero_page],
+
 
         0xad: [lda, am.absolute],
         0xbd: [lda, am.absolute_x],
@@ -535,6 +608,7 @@ function W65C02S()
 
         0x38: [sec, am.implied],
         0xf8: [sed, am.implied],
+        0x78: [sei, am.implied],
     };
 
 
