@@ -117,58 +117,58 @@
 
 
   <script src="w65c02s.js"></script>
-  <script type="text/javascript">
-    const cpu = new W65C02S();
+  <script>
     var cycles;
     var output;
     var hexval;
 
     function setup() {
-        cpu.mem[0x0100] = 0xbe;
-        cpu.mem[0x0101] = 0xef;
+        ram.write(0x0100, 0xbee);
+        ram.write(0x0100, 0xbe);
+        ram.write(0x0101, 0xef);
 
-        cpu.mem[0x0000] = 0xad;
-        cpu.mem[0x0001] = 0x00;
-        cpu.mem[0x0002] = 0x01;
+        ram.write(0x0000, 0xad);
+        ram.write(0x0001, 0x00);
+        ram.write(0x0002, 0x01);
 
-        cpu.mem[0x0003] = 0x09;
-        cpu.mem[0x0004] = 0xf0;
+        ram.write(0x0003, 0x09);
+        ram.write(0x0004, 0xf0);
 
-        cpu.mem[0x2000] = 0xa9;
-        cpu.mem[0x2001] = 0x06;
-        cpu.mem[0x2002] = 0x0a;
-        cpu.mem[0x2003] = 0x1f;
-        cpu.mem[0x2004] = 0x00;
-        cpu.mem[0x2005] = 0xfc;
-        cpu.mem[0x2006] = 0x09;
-        cpu.mem[0x2007] = 0x70;
+        ram.write(0x2000, 0xa9);
+        ram.write(0x2001, 0x06);
+        ram.write(0x2002, 0x0a);
+        ram.write(0x2003, 0x1f);
+        ram.write(0x2004, 0x00);
+        ram.write(0x2005, 0xfc);
+        ram.write(0x2006, 0x09);
+        ram.write(0x2007, 0x70);
 /*
         //clc
-        cpu.mem[0x2000] = 0x18;
+        ram.write(0x2000, 0x18);
         //sec
-//        cpu.mem[0x2000] = 0x38;
+//        ram.write(0x2000, 0x38);
         //sed
-//        cpu.mem[0x2001] = 0xf8;
+//        ram.write(0x2001, 0xf8);
         //lda
-        cpu.mem[0x2001] = 0xa9;
-        cpu.mem[0x2002] = 0x01;
+        ram.write(0x2001, 0xa9);
+        ram.write(0x2002, 0x01);
         //adc
-        cpu.mem[0x2003] = 0x69;
-        cpu.mem[0x2004] = 0xff;
+        ram.write(0x2003, 0x69);
+        ram.write(0x2004, 0xff);
 */
         for(let i=0; i<8; i++) {
-            hexval[i].value = cpu.mem[0x2000 + i].toString(16).padStart(2, '0');
+            hexval[i].value = ram.read(0x2000 + i).toString(16).padStart(2, '0');
         }
 
-        cpu.set_pc(0x2000);
+        cpu.register.pc = 0x2000;
         hexval[0].parentNode.firstChild.classList.add('active');
-        update_regs(cpu.get_regs());
+        update_regs(cpu.register);
         cycles = 0;
     }
 
     function step() {
         for(let i=0; i<8; i++) {
-            cpu.mem[0x2000 + i] = parseInt(hexval[i].value, 16);
+            ram.write(0x2000 + i, parseInt(hexval[i].value, 16));
         }
 
         const res = cpu.step();
@@ -178,12 +178,11 @@
         }
         cycles += res;
 
-        const regs = cpu.get_regs();
-        update_regs(regs);
+        update_regs(cpu.register);
         message("cycles: " + cycles, true);
 
         for(let i=0; i<8; i++) {
-            if(i == (regs.pc-0x2000)) {
+            if(i == (cpu.register.pc-0x2000)) {
                 hexval[i].parentNode.firstChild.classList.add('active');
             } else {
                 hexval[i].parentNode.firstChild.classList.remove('active');
@@ -201,19 +200,19 @@
 
     function update_regs(reg) {
         var flag_str;
-        flag_str  = (reg.flags & 0x80) ? "1 " : "0 ";
-        flag_str += (reg.flags & 0x40) ? "1 " : "0 ";
+        flag_str  = (reg.flag.n) ? "1 " : "0 ";
+        flag_str += (reg.flag.v) ? "1 " : "0 ";
         flag_str += "+ ";
-        flag_str += (reg.flags & 0x10) ? "1 " : "0 ";
+        flag_str += (reg.flag.b) ? "1 " : "0 ";
         flag_str += "&nbsp;";
-        flag_str += (reg.flags & 0x08) ? "1 " : "0 ";
-        flag_str += (reg.flags & 0x04) ? "1 " : "0 ";
-        flag_str += (reg.flags & 0x02) ? "1 " : "0 ";
-        flag_str += (reg.flags & 0x01) ? "1 " : "0 ";
+        flag_str += (reg.flag.d) ? "1 " : "0 ";
+        flag_str += (reg.flag.i) ? "1 " : "0 ";
+        flag_str += (reg.flag.z) ? "1 " : "0 ";
+        flag_str += (reg.flag.c) ? "1 " : "0 ";
 
         regdisp.innerHTML  = "<div>a = " +reg.a.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;pc = " +reg.pc.toString(16).padStart(4, '0')+ "</div>";
         regdisp.innerHTML += "<div>x = " +reg.x.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;sp = &nbsp;&nbsp;" +reg.sp.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;n v . b &nbsp;d i z c</div>";
-        regdisp.innerHTML += "<div>y = " +reg.y.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;sf = &nbsp;&nbsp;" +reg.flags.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" +flag_str+ "</div>";
+        regdisp.innerHTML += "<div>y = " +reg.y.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;sf = &nbsp;&nbsp;" +reg.flag.value.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" +flag_str+ "</div>";
     }
 
     function init() {
