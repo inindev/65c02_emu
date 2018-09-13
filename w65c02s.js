@@ -923,7 +923,7 @@ class W65C02S
             const opname = opentry[0];       // the name: "adc"
             for(let j=0; j<18; j++) {        // enum address modes for the entry
                 const opnum = opentry[j+1];  // op num for addr mode: 0x6d
-                if(opnum) {                  // op supports this address mode?
+                if(opnum != undefined) {     // op supports this address mode?
                     const memfn = addr_mode[j];
                     if(opname.length > 3) {
                         // digit 4 is the bit num
