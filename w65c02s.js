@@ -299,7 +299,7 @@ class W65C02S
         this.reg.flag.test_n(res);
         this.reg.flag.test_z(res);
         this.reg.flag.test_c(res);
-        return memfn.cycles;
+        return memfn.cycles + memfn.write_extra_cycles;
     }
 
     //                                            n v b d i z c
@@ -365,17 +365,21 @@ class W65C02S
     }
 
     //                                            n  v  b d i z c
-    // BIT   a & m -> z, m7 -> n, m6 -> v         m7 m6 - - - - -
+    // BIT   a & m -> z, m7 -> n, m6 -> v         m7 m6 - - - + -
     //
     bit(memfn) {
         const val = memfn.read();
 
         // a & m -> z
         this.reg.flag.test_z(val & this.reg.a);
-        // m7 -> n
-        this.reg.flag.n = (val & 0x80);
-        // m6 -> v
-        this.reg.flag.v = (val & 0x40);
+
+        // immediate mode does not set n nor v
+        if(memfn.mode != 7) {
+            // m7 -> n
+            this.reg.flag.n = (val & 0x80);
+            // m6 -> v
+            this.reg.flag.v = (val & 0x40);
+        }
 
         return memfn.cycles;
     }
@@ -704,32 +708,82 @@ class W65C02S
     stz(memfn) {
     }
 
+    //                                            n v b d i z c
+    // TAX   a -> x                               + - - - - + -
+    //
     tax(memfn) {
+        this.reg.x = this.reg.a;
+        return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // TAY   a -> y                               + - - - - + -
+    //
     tay(memfn) {
+        this.reg.y = this.reg.a;
+        return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // TRB   m & a -> z, m & ~a -> m              - - - - - + -
+    //
     trb(memfn) {
+        const val = memfn.read();
+        memfn.write(val & ~this.reg.a);
+        this.reg.flag.test_z(val & this.reg.a);
+        return memfn.cycles + memfn.write_extra_cycles;
     }
 
+    //                                            n v b d i z c
+    // TSB   m & a -> z, m | a -> m               - - - - - + -
+    //
     tsb(memfn) {
+        const val = memfn.read();
+        memfn.write(val | this.reg.a);
+        this.reg.flag.test_z(val & this.reg.a);
+        return memfn.cycles + memfn.write_extra_cycles;
     }
 
+    //                                            n v b d i z c
+    // TSX   sp -> x                              + - - - - + -
+    //
     tsx(memfn) {
+        this.reg.x = this.reg.sp;
+        return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // TXA   x -> a                               + - - - - + -
+    //
     txa(memfn) {
+        this.reg.a = this.reg.x;
+        return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // TXS   x -> sp                              - - - - - - -
+    //
     txs(memfn) {
+        this.reg.sp = this.reg.x;
+        return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // TYA   y -> a                               + - - - - + -
+    //
     tya(memfn) {
+        this.reg.a = this.reg.y;
+        return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // WAI   wait for interrupt                   - - 1 - - - -
+    //
     wai(memfn) {
+        this.reg.flag.b = true;
+        return memfn.cycles;
     }
+
 
     // step one instruction
     // returns cycles used for the operation
@@ -893,7 +947,7 @@ class W65C02S
                 read: () => { return this.ram.read((advance_byte() + this.reg.y) & 0xff); },
                 write: (val) => { this.ram.write(((advance_byte() + this.reg.y) & 0xff), val); },
                 bytes: 2,
-                cycles: 4,  // TODO: +2 on write
+                cycles: 4,
                 write_extra_cycles: 0
             },
             {// 15. Zero Page Indirect  (zp)
