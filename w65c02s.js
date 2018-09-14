@@ -261,21 +261,21 @@ class W65C02S
     // ADC   a + m + c -> a, c                    + + - - - + +
     //
     adc(memfn) {
-        const a = memfn.read();
-        const b = this.reg.a;
+        const a = this.reg.a;
+        const m = memfn.read();
         let res = this.reg.flag.c ? 1 : 0;
 
         if(this.reg.flag.d) {  // bcd
-            res += (a & 0x0f) + (b & 0x0f);
+            res += (a & 0x0f) + (m & 0x0f);
             if(res > 0x09) res += 0x06;
-            res += (a & 0xf0) + (b & 0xf0);
+            res += (a & 0xf0) + (m & 0xf0);
             if(res > 0x99) res += 0x60;
         } else {
-            res += a + b;
+            res += a + m;
         }
 
         this.reg.a = res; // n & z tests are automatic
-        this.reg.flag.test_v(a, b, res);
+        this.reg.flag.test_v(a, m, res);
         this.reg.flag.test_c(res);
         return memfn.cycles;
     }
@@ -663,7 +663,28 @@ class W65C02S
     rts(memfn) {
     }
 
+// TODO: test BCD
+    //                                            n v b d i z c
+    // SBC   a - m - c -> a                       + + - - - + +
+    //
     sbc(memfn) {
+        const a = this.reg.a;
+        const m = memfn.read() ^ 0xff;
+        let res = this.reg.flag.c ? 1 : 0;
+
+        if(this.reg.flag.d) {  // bcd
+            res += (a & 0x0f) + (m & 0x0f);
+            if(res < 0x10) res -= 0x06;
+            res += (a & 0xf0) + (m & 0xf0);
+            if(res < 0x100) res -= 0x60;
+        } else {
+            res += a + m;
+        }
+
+        this.reg.a = res; // n & z tests are automatic
+        this.reg.flag.test_v(a, m, res);
+        this.reg.flag.test_c(res);
+        return memfn.cycles;
     }
 
     //                                            n v b d i z c
@@ -693,26 +714,50 @@ class W65C02S
     smb(b, memfn) {
     }
 
+    //                                            n v b d i z c
+    // STA   a -> m                               - - - - - - -
+    //
     sta(memfn) {
+        memfn.write(this.reg.a);
+        return memfn.cycles; // TODO: extra cycles w/o read?
     }
 
+    //                                            n v b d i z c
+    // STP   processor halt                       - - - - - - -
+    //
     stp(memfn) {
+        return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // STX   x -> m                               - - - - - - -
+    //
     stx(memfn) {
+        memfn.write(this.reg.x);
+        return memfn.cycles; // TODO: extra cycles w/o read?
     }
 
+    //                                            n v b d i z c
+    // STY   y -> m                               - - - - - - -
+    //
     sty(memfn) {
+        memfn.write(this.reg.y);
+        return memfn.cycles; // TODO: extra cycles w/o read?
     }
 
+    //                                            n v b d i z c
+    // STZ   0 -> m                               - - - - - - -
+    //
     stz(memfn) {
+        memfn.write(0x00);
+        return memfn.cycles; // TODO: extra cycles w/o read?
     }
 
     //                                            n v b d i z c
     // TAX   a -> x                               + - - - - + -
     //
     tax(memfn) {
-        this.reg.x = this.reg.a;
+        this.reg.x = this.reg.a; // n & z tests are automatic
         return memfn.cycles;
     }
 
@@ -720,7 +765,7 @@ class W65C02S
     // TAY   a -> y                               + - - - - + -
     //
     tay(memfn) {
-        this.reg.y = this.reg.a;
+        this.reg.y = this.reg.a; // n & z tests are automatic
         return memfn.cycles;
     }
 
@@ -748,7 +793,7 @@ class W65C02S
     // TSX   sp -> x                              + - - - - + -
     //
     tsx(memfn) {
-        this.reg.x = this.reg.sp;
+        this.reg.x = this.reg.sp; // n & z tests are automatic
         return memfn.cycles;
     }
 
@@ -756,7 +801,7 @@ class W65C02S
     // TXA   x -> a                               + - - - - + -
     //
     txa(memfn) {
-        this.reg.a = this.reg.x;
+        this.reg.a = this.reg.x; // n & z tests are automatic
         return memfn.cycles;
     }
 
@@ -772,7 +817,7 @@ class W65C02S
     // TYA   y -> a                               + - - - - + -
     //
     tya(memfn) {
-        this.reg.a = this.reg.y;
+        this.reg.a = this.reg.y; // n & z tests are automatic
         return memfn.cycles;
     }
 
