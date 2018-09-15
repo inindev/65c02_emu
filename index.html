@@ -15,15 +15,15 @@
         background: #e1e1d0;
     }
     #regdisp {
-        margin-top: .8em;
-        margin-bottom: .8em;
+        margin-top: .7em;
+        margin-bottom: .7em;
         padding: 1em;
         border: 1px solid #999;
         width: 24em;
         background: #f5f5ef;
     }
     button {
-        margin: .2em;
+        margin: 4px;
         border: 1px solid #c5c5c5;
         border-radius: 3px;
         width: 6em;
@@ -31,6 +31,10 @@
         font-size: 14px;
         color: #f5f5ef;
         background: #734d26;
+    }
+    button:active {
+        color: #734d26;
+        background: #6cbfbc;
     }
     .row {
         padding: 4em;
@@ -72,10 +76,9 @@
     }
     .hexdata>div>span.active {
         background: #fc5b2f;
-        xbackground: #28f;
     }
     .hexdata>div>input:not([type=checkbox]) {
-        margin: 4px;
+        margin: 3px;
         padding-left: 1em; 
         width: 6em;
         font-size: 12px;
@@ -94,7 +97,7 @@
         <div>x = 00&nbsp;&nbsp;&nbsp;sp =&nbsp;&nbsp;&nbsp;ff&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;n v . b&nbsp;&nbsp;d i z c</div>
         <div>y = 00&nbsp;&nbsp;&nbsp;sf =&nbsp;&nbsp;&nbsp;00&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0 0 + 0&nbsp;&nbsp;0 0 0 0</div>
       </div>
-      <div><button id="step" style="">step</button></div>
+      <div><button id="step">step</button><button id="reset">reset</button></div>
       <div id="output" style="margin: 1em; margin-top: 2em;"></div>
     </div>
 
@@ -123,39 +126,13 @@
     var hexval;
 
     function setup() {
-        ram.write(0x0100, 0xbee);
-        ram.write(0x0100, 0xbe);
-        ram.write(0x0101, 0xef);
+        ram.write(0x2000, 0x18); // clc
+//        ram.write(0x2000, 0x38); // sec
+        ram.write(0x2001, 0xa9); // lda
+        ram.write(0x2002, 0x60);
+        ram.write(0x2003, 0xe9); // sbc
+        ram.write(0x2004, 0x40);
 
-        ram.write(0x0000, 0xad);
-        ram.write(0x0001, 0x00);
-        ram.write(0x0002, 0x01);
-
-        ram.write(0x0003, 0x09);
-        ram.write(0x0004, 0xf0);
-
-        ram.write(0x2000, 0xa9);
-        ram.write(0x2001, 0x06);
-        ram.write(0x2002, 0x0a);
-        ram.write(0x2003, 0x1f);
-        ram.write(0x2004, 0x00);
-        ram.write(0x2005, 0xfc);
-        ram.write(0x2006, 0x09);
-        ram.write(0x2007, 0x70);
-/*
-        //clc
-        ram.write(0x2000, 0x18);
-        //sec
-//        ram.write(0x2000, 0x38);
-        //sed
-//        ram.write(0x2001, 0xf8);
-        //lda
-        ram.write(0x2001, 0xa9);
-        ram.write(0x2002, 0x01);
-        //adc
-        ram.write(0x2003, 0x69);
-        ram.write(0x2004, 0xff);
-*/
         for(let i=0; i<8; i++) {
             hexval[i].value = ram.read(0x2000 + i).toString(16).padStart(2, '0');
         }
@@ -190,6 +167,20 @@
         }
     }
 
+    function reset() {
+        cpu.reset();
+        cpu.register.pc = 0x2000;
+        for(let i=0; i<8; i++) {
+            if(i == (cpu.register.pc-0x2000)) {
+                hexval[i].parentNode.firstChild.classList.add('active');
+            } else {
+                hexval[i].parentNode.firstChild.classList.remove('active');
+            }
+        }
+        update_regs(cpu.register);
+        cycles = 0;
+    }
+
     function message(text, c) {
         if(!text || c) {
             output.innerHTML = "";
@@ -220,6 +211,7 @@
         regdisp = document.getElementById("regdisp");
         hexval = document.querySelectorAll("div.hexdata>div>input:not([type=checkbox]");
         document.getElementById("step").addEventListener("click", step);
+        document.getElementById("reset").addEventListener("click", reset);
         setup();
     }
 

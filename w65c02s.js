@@ -183,12 +183,25 @@ class Flags6502
         this.c = val & 0x01;
     }
 
-    // overflow and carry calculations require the raw unclamped result
+    // sign overflow calculation requires bit 7 to reflect sign
+    // BCD requires "< 0x80" rather than "& 0x80" for sign detection
+    //   e.g. BCD 40 + 60 = 100 and 0x100 has no sign bit at b7
+    //
+    // addition overflow (av) occurs if:
+    //   +a + +b = −r
+    //   −a + −b = +r
+    test_av(a, b, r) { this.v = ((a ^ r) & (b ^ r)) & 0x80; }
+    // subtraction overflow (sv) occurs if:
+    //   +a - -b = −r
+    //   −a - +b = +r
+    test_sv(a, b, r) { this.v = ((a ^ b) & (a ^ r)) & 0x80; }
+
+    // carry calculation require the raw unclamped result
+    test_c(val)     { this.c = (val & 0xf00); }
+
     test_n(val)     { this.n = (val & 0x80); }
-    test_v(a, b, r) { this.v = (a<0x80 != r<0x80) && (b<0x80 != r<0x80); } // <-- if both operands have the same sign, then the result
-    test_z(val)     { this.z = (val & 0xff) == 0; }                        //     needs to share that same sign (or it is a sign overflow)
-    test_c(val)     { this.c = (val & 0xf00); }                            //     BCD requires < 0x80 rather than & 0x80 for sign detection
-                                                                           //       e.g. BCD 40 + 60 = 100 and 0x100 has no sign bit at b7
+    test_z(val)     { this.z = (val & 0xff) == 0; }
+
     reset() {
         this._n = false;
         this._v = false;
@@ -270,12 +283,13 @@ class W65C02S
             if(res > 0x09) res += 0x06;
             res += (a & 0xf0) + (m & 0xf0);
             if(res > 0x99) res += 0x60;
+            this.reg.flag.test_av(a, m, (res > 0x79) ? 0x80 : 0x00);
         } else {
             res += a + m;
+            this.reg.flag.test_av(a, m, res);
         }
 
         this.reg.a = res; // n & z tests are automatic
-        this.reg.flag.test_v(a, m, res);
         this.reg.flag.test_c(res);
         return memfn.cycles;
     }
@@ -496,9 +510,6 @@ class W65C02S
     }
 
 
-    cmp(memfn) {
-    }
-
     //                                            n v b d i z c
     // CMP   a-m                                  + - - - - + +
     //
@@ -669,20 +680,22 @@ class W65C02S
     //
     sbc(memfn) {
         const a = this.reg.a;
-        const m = memfn.read() ^ 0xff;
+        const m = memfn.read();
         let res = this.reg.flag.c ? 1 : 0;
 
         if(this.reg.flag.d) {  // bcd
-            res += (a & 0x0f) + (m & 0x0f);
+            const mc = (m ^ 0xff);
+            res += (a & 0x0f) + (mc & 0x0f);
             if(res < 0x10) res -= 0x06;
-            res += (a & 0xf0) + (m & 0xf0);
+            res += (a & 0xf0) + (mc & 0xf0);
             if(res < 0x100) res -= 0x60;
+            this.reg.flag.test_sv(a, m, (res > 0x79) ? 0x80 : 0x00);
         } else {
-            res += a + m;
+            res += a + (m ^ 0xff);
+            this.reg.flag.test_sv(a, m, res);
         }
 
         this.reg.a = res; // n & z tests are automatic
-        this.reg.flag.test_v(a, m, res);
         this.reg.flag.test_c(res);
         return memfn.cycles;
     }
@@ -1039,7 +1052,7 @@ class W65C02S
     }
 
     reset() {
-        this.ram.reset();
+        //this.ram.reset();
         this.reg.reset();
     }
 
