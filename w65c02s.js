@@ -183,10 +183,6 @@ class Flags6502
         this.c = val & 0x01;
     }
 
-    // sign overflow calculation requires bit 7 to reflect sign
-    // BCD requires "< 0x80" rather than "& 0x80" for sign detection
-    //   e.g. BCD 40 + 60 = 100 and 0x100 has no sign bit at b7
-    //
     // addition overflow (av) occurs if:
     //   +a + +b = −r
     //   −a + −b = +r
@@ -274,16 +270,16 @@ class W65C02S
     // ADC   a + m + c -> a, c                    + + - - - + +
     //
     adc(memfn) {
-        const a = this.reg.a;
         const m = memfn.read();
+        const a = this.reg.a;
         let res = this.reg.flag.c ? 1 : 0;
 
         if(this.reg.flag.d) {  // bcd
             res += (a & 0x0f) + (m & 0x0f);
             if(res > 0x09) res += 0x06;
             res += (a & 0xf0) + (m & 0xf0);
+            this.reg.flag.test_av(a, m, res);
             if(res > 0x99) res += 0x60;
-            this.reg.flag.test_av(a, m, (res > 0x79) ? 0x80 : 0x00);
         } else {
             res += a + m;
             this.reg.flag.test_av(a, m, res);
@@ -674,13 +670,12 @@ class W65C02S
     rts(memfn) {
     }
 
-// TODO: test BCD
     //                                            n v b d i z c
     // SBC   a - m - c -> a                       + + - - - + +
     //
     sbc(memfn) {
-        const a = this.reg.a;
         const m = memfn.read();
+        const a = this.reg.a;
         let res = this.reg.flag.c ? 1 : 0;
 
         if(this.reg.flag.d) {  // bcd
@@ -688,8 +683,8 @@ class W65C02S
             res += (a & 0x0f) + (mc & 0x0f);
             if(res < 0x10) res -= 0x06;
             res += (a & 0xf0) + (mc & 0xf0);
+            this.reg.flag.test_sv(a, m, res);
             if(res < 0x100) res -= 0x60;
-            this.reg.flag.test_sv(a, m, (res > 0x79) ? 0x80 : 0x00);
         } else {
             res += a + (m ^ 0xff);
             this.reg.flag.test_sv(a, m, res);
