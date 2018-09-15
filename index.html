@@ -126,14 +126,21 @@
     var hexval;
 
     function setup() {
-        ram.write(0x2000, 0x18); // clc
+        ram.write(0x2000, 0xce);
+        ram.write(0x2001, 0x07);
+        ram.write(0x2002, 0x20);
+        ram.write(0x2003, 0x00);
+        ram.write(0x2004, 0x00);
+        ram.write(0x2005, 0x00);
+        ram.write(0x2006, 0x00);
+        ram.write(0x2007, 0x80);
+//        ram.write(0x2000, 0x18); // clc
 //        ram.write(0x2000, 0x38); // sec
-        ram.write(0x2001, 0xf8); // sed
-
-        ram.write(0x2002, 0xa9); // lda
-        ram.write(0x2003, 0xe0);
-        ram.write(0x2004, 0xe9); // sbc
-        ram.write(0x2005, 0xc0);
+//        ram.write(0x2001, 0xf8); // sed
+//        ram.write(0x2002, 0xa9); // lda
+//        ram.write(0x2003, 0xe0);
+//        ram.write(0x2004, 0xe9); // sbc
+//        ram.write(0x2005, 0xc0);
 
         for(let i=0; i<8; i++) {
             hexval[i].value = ram.read(0x2000 + i).toString(16).padStart(2, '0');

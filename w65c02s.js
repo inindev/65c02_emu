@@ -126,6 +126,13 @@ class RAM
         return this.u8a[addr & 0xffff];
     }
 
+    // little endian read
+    read_word(addr) {
+        const bl = this.read(addr);
+        const bh = this.read(addr + 1) << 8;
+        return bh | bl;
+    }
+
     write(addr, val) {
         this.u8a[addr & 0xffff] = val;
     }
@@ -884,169 +891,203 @@ class W65C02S
         //    15: zero_page_indirect       (zp)    Zero Page Indirect
         //    16: zero_page_indirect_y     (zp),y  Zero Page Indirect Indexed with Y
 
-        const advance_byte = () => { return this.ram.read(this.reg.pc++); };
-        const advance_word = () => { return advance_byte() | advance_byte()<<8; };
+        const pop_byte_pc = () => { return this.ram.read(this.reg.pc++); };
+        const pop_word_pc = () => { return pop_byte_pc() | pop_byte_pc()<<8; };
 
         const addr_mode = [
-            {// 1. Absolute  a
-                type: 1,
+            // 1. Absolute  a
+            ((addr) => { return {
                 name: "absolute",
-                read: () => { return this.ram.read(advance_word()); },
-                write: (val) => { this.ram.write(advance_word(), val); },
+                init: () => { addr = pop_word_pc(); },
+                read: () => { return this.ram.read(addr); },
+                write: (val) => { this.ram.write(addr, val); },
                 bytes: 3,
                 cycles: 4,
                 write_extra_cycles: 2
-            },
-            {// 2. Absolute Indexed Indirect  (a,x)  (used for jmp)
-                type: 2,
+            } })(),
+
+            // 2. Absolute Indexed Indirect  (a,x)  (used for jmp)
+            ((addr) => { return {
                 name: "absolute_x_indirect",
-                read: () => { return this.ram.read_word(advance_word() + this.reg.x); },
+                init: () => { addr = this.ram.read_word(pop_word_pc() + this.reg.x) & 0xffff; },
+                jump: () => { this.reg.pc = addr; },
                 bytes: 3,
                 cycles: 5,
                 write_extra_cycles: 0
-            },
-            {// 3. Absolute Indexed with X  a,x
-                type: 3,
+            } })(),
+
+            // 3. Absolute Indexed with X  a,x
+            ((addr) => { return {
                 name: "absolute_x",
-                read: () => { return this.ram.read(advance_word() + this.reg.x); },
-                write: (val) =>    { this.ram.write(advance_word() + this.reg.x, val); },
+                init: () => { addr = (pop_word_pc() + this.reg.x) & 0xffff; },
+                read: () => { return this.ram.read(addr); },
+                write: (val) => { this.ram.write(addr, val); },
                 bytes: 3,
                 cycles: 4,
                 write_extra_cycles: 2
                 // TODO: +1 cycle for page boundary
-            },
-            {// 4. Absolute Indexed with Y  a,y
-                type: 4,
+            } })(),
+
+            // 4. Absolute Indexed with Y  a,y
+            ((addr) => { return {
                 name: "absolute_y",
-                read: () => { return this.ram.read(advance_word() + this.reg.y); },
-                //write: (val) =>    { this.ram.write(advance_word() + this.reg.y, val); },
+                init: () => { addr = (pop_word_pc() + this.reg.y) & 0xffff; },
+                read: () => { return this.ram.read(addr); },
+                write: (val) => { this.ram.write(addr, val); },
                 bytes: 3,
                 cycles: 4,
                 write_extra_cycles: 0
                 // TODO: +1 cycle for page boundary
-            },
-            {// 5. Absolute Indirect  (a)   (used for jmp)
-                type: 5,
+            } })(),
+
+            // 5. Absolute Indirect  (a)   (used for jmp)
+            ((addr) => { return {
                 name: "absolute_indirect",
-                read: () => { return read_word(advance_word()); },
+                init: () => { addr = this.ram.read_word(pop_word_pc()); },
+                jump: () => { this.reg.pc = addr; },
                 bytes: 3,
                 cycles: 4,
                 write_extra_cycles: 2
-            },
-            {// 6. Accumulator  A
-                type: 6,
+            } })(),
+
+            // 6. Accumulator  A
+            ((addr) => { return {
                 name: "accumulator",
+                init: () => { },
                 read: () => { return this.reg.a; },
                 write: (val) => { this.reg.a = val; },
                 bytes: 1,
                 cycles: 2,
                 write_extra_cycles: 0
-            },
-            {// 7. Immediate  #
-                type: 7,
+            } })(),
+
+            // 7. Immediate  #
+            ((addr) => { return {
                 name: "immediate",
-                read: advance_byte,
+                init: () => { },
+                read: () => { return pop_byte_pc(); },
                 bytes: 2,
                 cycles: 2,
                 write_extra_cycles: 0
-            },
-            {// 8. Implied  i
-                type: 8,
+            } })(),
+
+            // 8. Implied  i
+            ((addr) => { return {
                 name: "implied",
+                init: () => { },
                 bytes: 1,
                 cycles: 2,
                 write_extra_cycles: 0
-            },
-            {// 9a. Program Counter Relative  r
-                type: 9,
+            } })(),
+
+            // 9a. Program Counter Relative  r
+            ((addr) => { return {
                 name: "relative_pc",
-                offset: advance_byte,
+                init: () => { },
+                offset: () => { return pop_byte_pc(); },
                 //TODO: 2c math?
                 branch: (offs) => { this.reg.pc += (offs & 0xff); if(offs & 0x80) this.reg.pc -= 0x100; },
                 bytes: 2,
                 cycles: 2,
                 branch_extra_cycles: 1
-            },
-            {// 9b. Zero Page Program Counter Relative  zp,r
-                //     note: not explicity described in the w65c02s datasheet
-                //           but applies to BBRb zp,offs and BBSb zp,offs operations
-                //           BBRb and BBSb are three byte operations
-                type: 9,
+            } })(),
+
+            // 9b. Zero Page Program Counter Relative  zp,r
+            //     note: not explicity described in the w65c02s datasheet
+            //       but applies to BBRb zp,offs and BBSb zp,offs operations
+            //       BBRb and BBSb are three byte operations
+            ((addr) => { return {
                 name: "zero_page_relative_pc",
-                read: () => { return this.ram.read(advance_byte()); },
-                offset: advance_byte,
+                init: () => { addr = pop_byte_pc(); },
+                read: () => { return this.ram.read(addr); },
+                offset: () => { return pop_byte_pc(); },
                 //TODO: 2c math?
                 branch: (offs) => { this.reg.pc += (offs & 0xff); if(offs & 0x80) this.reg.pc -= 0x100; },
                 bytes: 3,
                 cycles: 2,
                 branch_extra_cycles: 1
-            },
-            {// 10. Stack  s
-                type: 10,
+            } })(),
+
+            // 10. Stack  s
+            ((addr) => { return {
                 name: "relative_stack",
+                init: () => { },
                 bytes: 1,  // TODO: up to +3 stack bytes
                 cycles: 3,
                 write_extra_cycles: 0
                 // TODO: +4 cycles possible 
-            },
-            {// 11. Zero Page  zp
-                type: 11,
+            } })(),
+
+            // 11. Zero Page  zp
+            ((addr) => { return {
                 name: "zero_page",
-                read: () => { return this.ram.read(advance_byte()); },
-                write: (val) => { this.ram.write(advance_byte(), val); },
+                init: () => { addr = pop_byte_pc(); },
+                read: () => { return this.ram.read(addr); },
+                write: (val) => { this.ram.write(addr, val); },
                 bytes: 2,
                 cycles: 3,
                 write_extra_cycles: 2
-            },
-            {// 12. Zero Page Indexed Indirect  (zp,x)
-                type: 12,
+            } })(),
+
+            // 12. Zero Page Indexed Indirect  (zp,x)
+            ((addr) => { return {
                 name: "zero_page_x_indirect",
-                read: () => { return this.ram.read(read_word((advance_byte() + this.reg.x) & 0xff)); },
-                write: (val) => { this.ram.write(read_word((advance_byte() + this.reg.x) & 0xff), val); },
+                init: () => { addr = this.ram.read_word((pop_byte_pc() + this.reg.x) & 0xff); },
+                read: () => { return this.ram.read(addr); },
+                write: (val) => { this.ram.write(addr, val); },
                 bytes: 2,
                 cycles: 6,
                 write_extra_cycles: 0
-            },
-            {// 13. Zero Page Indexed with X  zp,x
-                type: 13,
+            } })(),
+
+            // 13. Zero Page Indexed with X  zp,x
+            ((addr) => { return {
                 name: "zero_page_x",
-                read: () => { return this.ram.read((advance_byte() + this.reg.x) & 0xff); },
-                write: (val) => { this.ram.write(((advance_byte() + this.reg.x) & 0xff), val); },
+                init: () => { addr = (pop_byte_pc() + this.reg.x) & 0xff; },
+                read: () => { return this.ram.read(addr); },
+                write: (val) => { this.ram.write(addr, val); },
                 bytes: 2,
                 cycles: 4,
                 write_extra_cycles: 2
-            },
-            {// 14. Zero Page Indexed with Y  zp,y
-                type: 14,
+            } })(),
+
+            // 14. Zero Page Indexed with Y  zp,y
+            ((addr) => { return {
                 name: "zero_page_y",
-                read: () => { return this.ram.read((advance_byte() + this.reg.y) & 0xff); },
-                write: (val) => { this.ram.write(((advance_byte() + this.reg.y) & 0xff), val); },
+                init: () => { addr = (pop_byte_pc() + this.reg.y) & 0xff; },
+                read: () => { return this.ram.read(addr); },
+                write: (val) => { this.ram.write(addr, val); },
                 bytes: 2,
                 cycles: 4,
                 write_extra_cycles: 0
-            },
-            {// 15. Zero Page Indirect  (zp)
-                type: 15,
+            } })(),
+
+            // 15. Zero Page Indirect  (zp)
+            ((addr) => { return {
                 name: "zero_page_indirect",
-                read: () => { return this.ram.read(read_word(advance_byte())); },
-                write: (val) => { this.ram.write(read_word(advance_byte()), val); },
+                init: () => { addr = this.ram.read_word(pop_byte_pc()); },
+                read: () => { return this.ram.read(addr); },
+                write: (val) => { this.ram.write(addr, val); },
                 bytes: 2,
                 cycles: 5,
                 write_extra_cycles: 0
-            },
-            {// 16. Zero Page Indirect Indexed with Y  (zp),y
-                type: 16,
+            } })(),
+
+            // 16. Zero Page Indirect Indexed with Y  (zp),y
+            ((addr) => { return {
                 name: "zero_page_indirect_y",
-                read: () => { return this.ram.read((read_word(advance_byte()) + this.reg.y) & 0xffff); },
-                write: (val) => { this.ram.write(((read_word(advance_byte()) + this.reg.y) & 0xffff), val); },
+                init: () => { addr = (this.ram.read_word(pop_byte_pc()) + this.reg.y) & 0xffff; },
+                read: () => { return this.ram.read(addr); },
+                write: (val) => { this.ram.write(addr, val); },
                 bytes: 2,
                 cycles: 5,
                 write_extra_cycles: 0
-            }
+            } })()
         ];
 
+
         this.op = [ ];
-        this.step = () => { return this.op[advance_byte()](); };
+        this.step = () => { return this.op[pop_byte_pc()](); };
         for(let i=0; i<opdef.length; i++) {
             const opentry = opdef[i];        // the whole line: [ "adc" , 0x6d...
             const opname = opentry[0];       // the name: "adc"
@@ -1058,10 +1099,16 @@ class W65C02S
                         // digit 4 is the bit num
                         const fp = this[opname.substr(0, 3)];
                         const b = parseInt(opname[3]);
-                        this.op[opnum] = () => { return fp.call(this, b, memfn, opnum); };
+                        this.op[opnum] = () => {
+                            memfn.init();
+                            return fp.call(this, b, memfn, opnum);
+                        };
                     } else {
                         const fp = this[opname];
-                        this.op[opnum] = () => { return fp.call(this, memfn, opnum); };
+                        this.op[opnum] = () => {
+                            memfn.init();
+                            return fp.call(this, memfn, opnum);
+                        };
                     }
                 }
             }
