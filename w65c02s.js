@@ -377,14 +377,14 @@ class W65C02S
     //                                            n  v  b d i z c
     // BIT   a & m -> z, m7 -> n, m6 -> v         m7 m6 - - - + -
     //
-    bit(memfn) {
+    bit(memfn, opnum) {
         const val = memfn.read();
 
         // a & m -> z
         this.reg.flag.test_z(val & this.reg.a);
 
-        // immediate mode does not set n nor v
-        if(memfn.mode != 7) {
+        // immediate mode 0x89 does not set p7,6
+        if(opnum != 0x89) {
             // m7 -> n
             this.reg.flag.n = (val & 0x80);
             // m6 -> v
@@ -439,12 +439,12 @@ class W65C02S
         return memfn.cycles + memfn.branch_extra_cycles;
     }
 
-// TODO: clear decimal?  interrupt & push pc / sr?
     //                                            n v b d i z c
-    // BRK   break                                - - 1 - 1 - -
+    // BRK   break                                - - 1 0 1 - -
     //
     brk(memfn) {
         this.reg.flag.b = true;
+        this.reg.flag.d = false;
         this.reg.flag.i = true;
         return memfn.cycles;
     }
@@ -545,13 +545,33 @@ class W65C02S
         return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // DEC   m - 1 -> m                           + - - - - + -
+    //
     dec(memfn) {
+        const val = memfn.read();
+        const dec = val + 0xff;
+        memfn.write(dec);
+        this.reg.flag.test_n(dec);
+        this.reg.flag.test_z(dec);
+        this.reg.flag.test_c(dec);
+        return memfn.cycles + memfn.write_extra_cycles;
     }
 
+    //                                            n v b d i z c
+    // DEX   x - 1 -> x                           + - - - - + -
+    //
     dex(memfn) {
+        this.reg.x += 0xff; // n & z tests are automatic
+        return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // DEY   y - 1 -> y                           + - - - - + -
+    //
     dey(memfn) {
+        this.reg.y += 0xff; // n & z tests are automatic
+        return memfn.cycles;
     }
 
     eor(memfn) {
@@ -865,7 +885,7 @@ class W65C02S
         //    16: zero_page_indirect_y     (zp),y  Zero Page Indirect Indexed with Y
 
         const advance_byte = () => { return this.ram.read(this.reg.pc++); };
-        const advance_word = () => { return this.advance_byte() | this.advance_byte()<<8; };
+        const advance_word = () => { return advance_byte() | advance_byte()<<8; };
 
         const addr_mode = [
             {// 1. Absolute  a
@@ -917,7 +937,7 @@ class W65C02S
                 type: 6,
                 name: "accumulator",
                 read: () => { return this.reg.a; },
-                write: (val) => { this.reg.a = (val & 0xff); },
+                write: (val) => { this.reg.a = val; },
                 bytes: 1,
                 cycles: 2,
                 write_extra_cycles: 0
@@ -941,6 +961,7 @@ class W65C02S
                 type: 9,
                 name: "relative_pc",
                 offset: advance_byte,
+                //TODO: 2c math?
                 branch: (offs) => { this.reg.pc += (offs & 0xff); if(offs & 0x80) this.reg.pc -= 0x100; },
                 bytes: 2,
                 cycles: 2,
@@ -954,6 +975,7 @@ class W65C02S
                 name: "zero_page_relative_pc",
                 read: () => { return this.ram.read(advance_byte()); },
                 offset: advance_byte,
+                //TODO: 2c math?
                 branch: (offs) => { this.reg.pc += (offs & 0xff); if(offs & 0x80) this.reg.pc -= 0x100; },
                 bytes: 3,
                 cycles: 2,
@@ -1036,10 +1058,10 @@ class W65C02S
                         // digit 4 is the bit num
                         const fp = this[opname.substr(0, 3)];
                         const b = parseInt(opname[3]);
-                        this.op[opnum] = () => { return fp.call(this, b, memfn); };
+                        this.op[opnum] = () => { return fp.call(this, b, memfn, opnum); };
                     } else {
                         const fp = this[opname];
-                        this.op[opnum] = () => { return fp.call(this, memfn); };
+                        this.op[opnum] = () => { return fp.call(this, memfn, opnum); };
                     }
                 }
             }

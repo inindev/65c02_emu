@@ -157,11 +157,11 @@
         }
         cycles += res;
 
-cpu.register.flag.b = true;
         update_regs(cpu.register);
         message("cycles: " + cycles, true);
 
         for(let i=0; i<8; i++) {
+            hexval[i].value = ram.read(0x2000 + i).toString(16).padStart(2, '0');
             if(i == (cpu.register.pc-0x2000)) {
                 hexval[i].parentNode.firstChild.classList.add('active');
             } else {
