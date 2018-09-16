@@ -594,6 +594,9 @@ class W65C02S
     }
 
     jmp(memfn) {
+        const addr = memfn.addr();
+        this.reg.pc = addr;
+        return memfn.cycles;
     }
 
     jsr(memfn) {
@@ -899,6 +902,7 @@ class W65C02S
             ((addr) => { return {
                 name: "absolute",
                 init: () => { addr = pop_word_pc(); },
+                addr: () => { return addr; },
                 read: () => { return this.ram.read(addr); },
                 write: (val) => { this.ram.write(addr, val); },
                 bytes: 3,
@@ -909,8 +913,10 @@ class W65C02S
             // 2. Absolute Indexed Indirect  (a,x)  (used for jmp)
             ((addr) => { return {
                 name: "absolute_x_indirect",
-                init: () => { addr = this.ram.read_word(pop_word_pc() + this.reg.x) & 0xffff; },
-                jump: () => { this.reg.pc = addr; },
+                init: () => { addr = this.ram.read_word((pop_word_pc() + this.reg.x) & 0xffff); },
+                addr: () => { return addr; },
+                //read: () => { return this.ram.read(addr); },
+                //write: (val) => { this.ram.write(addr, val); },
                 bytes: 3,
                 cycles: 5,
                 write_extra_cycles: 0
@@ -920,6 +926,7 @@ class W65C02S
             ((addr) => { return {
                 name: "absolute_x",
                 init: () => { addr = (pop_word_pc() + this.reg.x) & 0xffff; },
+                addr: () => { return addr; },
                 read: () => { return this.ram.read(addr); },
                 write: (val) => { this.ram.write(addr, val); },
                 bytes: 3,
@@ -932,6 +939,7 @@ class W65C02S
             ((addr) => { return {
                 name: "absolute_y",
                 init: () => { addr = (pop_word_pc() + this.reg.y) & 0xffff; },
+                addr: () => { return addr; },
                 read: () => { return this.ram.read(addr); },
                 write: (val) => { this.ram.write(addr, val); },
                 bytes: 3,
@@ -944,7 +952,9 @@ class W65C02S
             ((addr) => { return {
                 name: "absolute_indirect",
                 init: () => { addr = this.ram.read_word(pop_word_pc()); },
-                jump: () => { this.reg.pc = addr; },
+                addr: () => { return addr; },
+                //read: () => { return this.ram.read(addr); },
+                //write: (val) => { this.ram.write(addr, val); },
                 bytes: 3,
                 cycles: 4,
                 write_extra_cycles: 2
@@ -1022,6 +1032,7 @@ class W65C02S
             ((addr) => { return {
                 name: "zero_page",
                 init: () => { addr = pop_byte_pc(); },
+                addr: () => { return addr; },
                 read: () => { return this.ram.read(addr); },
                 write: (val) => { this.ram.write(addr, val); },
                 bytes: 2,
@@ -1033,6 +1044,7 @@ class W65C02S
             ((addr) => { return {
                 name: "zero_page_x_indirect",
                 init: () => { addr = this.ram.read_word((pop_byte_pc() + this.reg.x) & 0xff); },
+                addr: () => { return addr; },
                 read: () => { return this.ram.read(addr); },
                 write: (val) => { this.ram.write(addr, val); },
                 bytes: 2,
@@ -1044,6 +1056,7 @@ class W65C02S
             ((addr) => { return {
                 name: "zero_page_x",
                 init: () => { addr = (pop_byte_pc() + this.reg.x) & 0xff; },
+                addr: () => { return addr; },
                 read: () => { return this.ram.read(addr); },
                 write: (val) => { this.ram.write(addr, val); },
                 bytes: 2,
@@ -1055,6 +1068,7 @@ class W65C02S
             ((addr) => { return {
                 name: "zero_page_y",
                 init: () => { addr = (pop_byte_pc() + this.reg.y) & 0xff; },
+                addr: () => { return addr; },
                 read: () => { return this.ram.read(addr); },
                 write: (val) => { this.ram.write(addr, val); },
                 bytes: 2,
@@ -1066,6 +1080,7 @@ class W65C02S
             ((addr) => { return {
                 name: "zero_page_indirect",
                 init: () => { addr = this.ram.read_word(pop_byte_pc()); },
+                addr: () => { return addr; },
                 read: () => { return this.ram.read(addr); },
                 write: (val) => { this.ram.write(addr, val); },
                 bytes: 2,
@@ -1077,6 +1092,7 @@ class W65C02S
             ((addr) => { return {
                 name: "zero_page_indirect_y",
                 init: () => { addr = (this.ram.read_word(pop_byte_pc()) + this.reg.y) & 0xffff; },
+                addr: () => { return addr; },
                 read: () => { return this.ram.read(addr); },
                 write: (val) => { this.ram.write(addr, val); },
                 bytes: 2,
