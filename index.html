@@ -135,49 +135,26 @@
     var hexval;
 
     function test_and_imm(offs) {
-        offs= offs | 0x2000;
-        ram.write(offs++, 0xa9); // lda, #$fa
-        ram.write(offs++, 0xfa); //
-        ram.write(offs++, 0x29); // and, #$af
-        ram.write(offs++, 0xaf); //
-        ram.write(offs++, 0xc9); // cmp, 0xaa - (z & c set if pass)
-        ram.write(offs++, 0xaa); //
-        ram.write(offs++, 0x00); // brk
+        ram.apply(offs || 0x2000, [
+            0xa9, 0xfa,  // lda, #$fa
+            0x29, 0xaf,  // and, #$af
+            0xc9, 0xaa,  // cmp, 0xaa - (z & c set if pass)
+        ]);
     }
     function test_and_abs(offs) {
-        offs= offs | 0x2000;
         ram.write(0x0002, 0xaf);
-
-        ram.write(offs++, 0xa9); // lda, #$fa
-        ram.write(offs++, 0xfa); //
-        ram.write(offs++, 0x2d); // and, $0002
-        ram.write(offs++, 0x02); //
-        ram.write(offs++, 0x00); //
-        ram.write(offs++, 0xc9); // cmp, 0xaa - (z & c set if pass)
-        ram.write(offs++, 0xaa); //
-        ram.write(offs++, 0x00); // brk
+        ram.apply(offs || 0x2000, [
+            0xa9, 0xfa,       // lda, #$fa
+            0x2d, 0x02, 0x00, // and, $0002
+            0xc9, 0xaa,       // cmp, 0xaa - (z & c set if pass)
+        ]);
     }
 
     function setup() {
-        test_and_abs();
-/*
-        let offs = 0x2000;
-        ram.write(offs++, 0xce); // dec
-        ram.write(offs++, 0x07);
-        ram.write(offs++, 0x20);
-        ram.write(offs++, 0x00);
-        ram.write(offs++, 0x00);
-        ram.write(offs++, 0x00);
-        ram.write(offs++, 0x00);
-        ram.write(offs++, 0x80);
-*/
-//        ram.write(0x2000, 0x18); // clc
-//        ram.write(0x2000, 0x38); // sec
-//        ram.write(0x2001, 0xf8); // sed
-//        ram.write(0x2002, 0xa9); // lda
-//        ram.write(0x2003, 0xe0);
-//        ram.write(0x2004, 0xe9); // sbc
-//        ram.write(0x2005, 0xc0);
+        // and tests
+        ram.reset();
+        test_and_imm();
+//        test_and_abs();
 
         for(let i=0; i<hexval.length; i++) {
             hexval[i].value = ram.read(0x2000 + i).toString(16).padStart(2, '0');

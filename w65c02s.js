@@ -137,6 +137,10 @@ class RAM
         this.u8a[addr & 0xffff] = val;
     }
 
+    apply(offs, arr) {
+        arr.map((v, i) => { ram.write(i+offs, v); });
+    }
+
     reset() {
         this.u8a.fill(0);
     }
