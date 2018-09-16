@@ -138,7 +138,7 @@ class RAM
     }
 
     apply(offs, arr) {
-        arr.map((v, i) => { ram.write(i+offs, v); });
+        arr.map((v, i) => { this.write(offs+i, v); });
     }
 
     reset() {

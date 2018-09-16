@@ -4,7 +4,7 @@
   <meta name="description" content="w65c02s emulator">
   <meta name="author" content="John Clark">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>w65c02s emulator</title>
+  <title>w65c02s emulator testbed</title>
   <style type="text/css">
     body {
         margin: 0px;
@@ -85,6 +85,9 @@
         border: 1px solid #c5c5c5;
         background: #fefef7;
     }
+    .hexdata>div>input:not([type=checkbox]).active {
+        color: red;
+    }
   </style>
 </head>
 
@@ -128,34 +131,34 @@
   </div>
 
 
-  <script src="w65c02s.js"></script>
+  <script src="../w65c02s.js"></script>
+  <script src="./tests.js"></script>
   <script>
     var cycles;
     var output;
     var hexval;
 
-    function test_and_imm(offs) {
-        ram.apply(offs || 0x2000, [
-            0xa9, 0xfa,  // lda, #$fa
-            0x29, 0xaf,  // and, #$af
-            0xc9, 0xaa,  // cmp, 0xaa - (z & c set if pass)
-        ]);
-    }
-    function test_and_abs(offs) {
-        ram.write(0x0002, 0xaf);
-        ram.apply(offs || 0x2000, [
-            0xa9, 0xfa,       // lda, #$fa
-            0x2d, 0x02, 0x00, // and, $0002
-            0xc9, 0xaa,       // cmp, 0xaa - (z & c set if pass)
-        ]);
-    }
-
     function setup() {
-        // and tests
+        // setup tests (see tests.js)
         ram.reset();
-        test_and_imm();
-//        test_and_abs();
+//        load_test(ram, test.and.abs);
+//        load_test(ram, test.and.abs_x);
+//        load_test(ram, test.and.abs_y);
+//        load_test(ram, test.and.imm);
+//        load_test(ram, test.and.zp);
+//        load_test(ram, test.and.zp_x_ind);
+//        load_test(ram, test.and.zp_x);
+//        load_test(ram, test.and.zp_ind);
+//        load_test(ram, test.and.zp_ind_y);
+//        ---
+//        load_test(ram, test.dec.abs);
+//        load_test(ram, test.dec.abs_x);
+//        load_test(ram, test.dec.accum);
+//        load_test(ram, test.dec.zp);
+        load_test(ram, test.dec.zp_x);
 
+
+        // display memory
         for(let i=0; i<hexval.length; i++) {
             hexval[i].value = ram.read(0x2000 + i).toString(16).padStart(2, '0');
         }
@@ -182,7 +185,15 @@
         message("cycles: " + cycles, true);
 
         for(let i=0; i<hexval.length; i++) {
-            hexval[i].value = ram.read(0x2000 + i).toString(16).padStart(2, '0');
+            const rv = ram.read(0x2000 + i).toString(16).padStart(2, '0');
+            if(rv != hexval[i].value) {
+                // operation updated displayed memory
+                hexval[i].value = rv;
+                hexval[i].classList.add('active');
+            } else {
+                hexval[i].classList.remove('active');
+            }
+
             if(i == (cpu.register.pc-0x2000)) {
                 hexval[i].parentNode.firstChild.classList.add('active');
             } else {
