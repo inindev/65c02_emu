@@ -695,28 +695,69 @@ class W65C02S
         return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // PHA   a -> push stack                      - - - - - - -
+    //
     pha(memfn) {
+        this.stack_push_byte(this.reg.a);
+        return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // PHP   proc status -> push stack            - - - - - - -
+    //
     php(memfn) {
+        this.stack_push_byte(this.reg.flag.value);
+        return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // PHX   x -> push stack                      - - - - - - -
+    //
     phx(memfn) {
+        this.stack_push_byte(this.reg.x);
+        return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // PHY   y -> push stack                      - - - - - - -
+    //
     phy(memfn) {
+        this.stack_push_byte(this.reg.y);
+        return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // PLA   pull stack -> a                      + - - - - + -
+    //
     pla(memfn) {
+        this.reg.a = this.stack_pull_byte();
+        return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // PLP   pull stack -> proc status             from stack
+    //
     plp(memfn) {
+        this.reg.flag.value = this.stack_pull_byte();
+        this.reg.flag.b = false;
+        return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // PLX   pull stack -> x                      + - - - - + -
+    //
     plx(memfn) {
+        this.reg.x = this.stack_pull_byte();
+        return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // PLY   pull stack -> y                      + - - - - + -
+    //
     ply(memfn) {
+        this.reg.y = this.stack_pull_byte();
+        return memfn.cycles;
     }
 
     //                                            n v b d i z c
@@ -758,12 +799,12 @@ class W65C02S
     }
 
     //                                            n v b d i z c
-    // RTI   pull sr, pull pc                      from stack
+    // RTI   pull stack -> sr, pull stack ->pc     from stack
     //
     rti(memfn) {
-        this.reg.flag.value = stack_pull_byte();
+        this.reg.flag.value = this.stack_pull_byte();
         this.reg.flag.b = false;
-        this.reg.pc = stack_pull_word();
+        this.reg.pc = this.stack_pull_word();
         return memfn.cycles;
     }
 
