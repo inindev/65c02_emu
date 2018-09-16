@@ -66,7 +66,7 @@
         clear: both;
     }
     .hexdata {
-        margin-top: 4em;
+        margin-top: 2em;
     }
     .hexdata>div {
         font-size: 11px;
@@ -111,6 +111,15 @@
         <div><span></span><input> 2005 <input type="checkbox"></div>
         <div><span></span><input> 2006 <input type="checkbox"></div>
         <div><span></span><input> 2007 <input type="checkbox"></div>
+        <div>&nbsp;</div>
+        <div><span></span><input> 2008 <input type="checkbox"></div>
+        <div><span></span><input> 2009 <input type="checkbox"></div>
+        <div><span></span><input> 200a <input type="checkbox"></div>
+        <div><span></span><input> 200b <input type="checkbox"></div>
+        <div><span></span><input> 200c <input type="checkbox"></div>
+        <div><span></span><input> 200d <input type="checkbox"></div>
+        <div><span></span><input> 200e <input type="checkbox"></div>
+        <div><span></span><input> 200f <input type="checkbox"></div>
     </div>
     </div>
 
@@ -125,15 +134,43 @@
     var output;
     var hexval;
 
+    function test_and_imm(offs) {
+        offs= offs | 0x2000;
+        ram.write(offs++, 0xa9); // lda, #$fa
+        ram.write(offs++, 0xfa); //
+        ram.write(offs++, 0x29); // and, #$af
+        ram.write(offs++, 0xaf); //
+        ram.write(offs++, 0xc9); // cmp, 0xaa - (z & c set if pass)
+        ram.write(offs++, 0xaa); //
+        ram.write(offs++, 0x00); // brk
+    }
+    function test_and_abs(offs) {
+        offs= offs | 0x2000;
+        ram.write(0x0002, 0xaf);
+
+        ram.write(offs++, 0xa9); // lda, #$fa
+        ram.write(offs++, 0xfa); //
+        ram.write(offs++, 0x2d); // and, $0002
+        ram.write(offs++, 0x02); //
+        ram.write(offs++, 0x00); //
+        ram.write(offs++, 0xc9); // cmp, 0xaa - (z & c set if pass)
+        ram.write(offs++, 0xaa); //
+        ram.write(offs++, 0x00); // brk
+    }
+
     function setup() {
-        ram.write(0x2000, 0xce);
-        ram.write(0x2001, 0x07);
-        ram.write(0x2002, 0x20);
-        ram.write(0x2003, 0x00);
-        ram.write(0x2004, 0x00);
-        ram.write(0x2005, 0x00);
-        ram.write(0x2006, 0x00);
-        ram.write(0x2007, 0x80);
+        test_and_abs();
+/*
+        let offs = 0x2000;
+        ram.write(offs++, 0xce); // dec
+        ram.write(offs++, 0x07);
+        ram.write(offs++, 0x20);
+        ram.write(offs++, 0x00);
+        ram.write(offs++, 0x00);
+        ram.write(offs++, 0x00);
+        ram.write(offs++, 0x00);
+        ram.write(offs++, 0x80);
+*/
 //        ram.write(0x2000, 0x18); // clc
 //        ram.write(0x2000, 0x38); // sec
 //        ram.write(0x2001, 0xf8); // sed
@@ -142,7 +179,7 @@
 //        ram.write(0x2004, 0xe9); // sbc
 //        ram.write(0x2005, 0xc0);
 
-        for(let i=0; i<8; i++) {
+        for(let i=0; i<hexval.length; i++) {
             hexval[i].value = ram.read(0x2000 + i).toString(16).padStart(2, '0');
         }
 
@@ -153,7 +190,7 @@
     }
 
     function step() {
-        for(let i=0; i<8; i++) {
+        for(let i=0; i<hexval.length; i++) {
             ram.write(0x2000 + i, parseInt(hexval[i].value, 16));
         }
 
@@ -167,7 +204,7 @@
         update_regs(cpu.register);
         message("cycles: " + cycles, true);
 
-        for(let i=0; i<8; i++) {
+        for(let i=0; i<hexval.length; i++) {
             hexval[i].value = ram.read(0x2000 + i).toString(16).padStart(2, '0');
             if(i == (cpu.register.pc-0x2000)) {
                 hexval[i].parentNode.firstChild.classList.add('active');
@@ -180,7 +217,7 @@
     function reset() {
         cpu.reset();
         cpu.register.pc = 0x2000;
-        for(let i=0; i<8; i++) {
+        for(let i=0; i<hexval.length; i++) {
             if(i == (cpu.register.pc-0x2000)) {
                 hexval[i].parentNode.firstChild.classList.add('active');
             } else {
@@ -189,6 +226,7 @@
         }
         update_regs(cpu.register);
         cycles = 0;
+        message();
     }
 
     function message(text, c) {
