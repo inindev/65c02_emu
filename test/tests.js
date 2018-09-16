@@ -151,6 +151,27 @@ const test = {
             ]
         },
     },
+
+    jsr: {
+        // JSR mode 1 0x20:  absolute:  a
+        abs: {
+            0x1000: [
+                0xba,   //  tsx
+                0x60    //  rts
+            ],
+            0x2000: [
+                0xba,              //  tsx
+                0xca,              //  dex
+                0xca,              //  dex
+                0x86, 0x03,        //  stx, $03
+                0xa2, 0x00,        //  ldx, #$00
+                0x20, 0x00, 0x10,  //> jsr
+                0xe4, 0x03,        //  cpx, $03 - (z & c set if pass)
+            ]
+        },
+
+    },
+
 };
 
 
