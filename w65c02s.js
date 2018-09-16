@@ -105,12 +105,9 @@ const opdef = [
     [ "sty" , 0x8c,     ,     ,     ,     ,     ,     ,     ,     ,     ,     , 0x84,     , 0x94,     ,     ,      ],
     [ "stz" , 0x9c,     , 0x9e,     ,     ,     ,     ,     ,     ,     ,     , 0x64,     , 0x74,     ,     ,      ],
     [ "tax" ,     ,     ,     ,     ,     ,     ,     , 0xaa,     ,     ,     ,     ,     ,     ,     ,     ,      ],
-//    [ "tay" ,     ,     , 0xbc,     ,     ,     ,     , 0xab,     ,     ,     ,     ,     ,     ,     ,     ,      ],
     [ "tay" ,     ,     ,     ,     ,     ,     ,     , 0xa8,     ,     ,     ,     ,     ,     ,     ,     ,      ],
-//    [ "trb" , 0x1c,     , 0x5e,     ,     ,     ,     ,     ,     ,     ,     , 0x14,     ,     ,     ,     ,      ],
     [ "trb" , 0x1c,     ,     ,     ,     ,     ,     ,     ,     ,     ,     , 0x14,     ,     ,     ,     ,      ],
     [ "tsb" , 0x0c,     ,     ,     ,     ,     ,     ,     ,     ,     ,     , 0x04,     ,     ,     ,     ,      ],
-//    [ "tsx" ,     ,     , 0x1d,     ,     ,     ,     , 0xba,     ,     ,     ,     ,     ,     ,     ,     ,      ],
     [ "tsx" ,     ,     ,     ,     ,     ,     ,     , 0xba,     ,     ,     ,     ,     ,     ,     ,     ,      ],
     [ "txa" ,     ,     ,     ,     ,     ,     ,     , 0x8a,     ,     ,     ,     ,     ,     ,     ,     ,      ],
     [ "txs" ,     ,     ,     ,     ,     ,     ,     , 0x9a,     ,     ,     ,     ,     ,     ,     ,     ,      ],
@@ -722,37 +719,52 @@ class W65C02S
     ply(memfn) {
     }
 
-    rmb0(memfn) {
+    //                                            n v b d i z c
+    // RMB   reset memory bit b                   - - - - - - -
+    //
+    rmb(b, memfn) {
+        const val = memfn.read();
+        val &= (0xff ^ (1 << b));
+        memfn.write(val);
+        return memfn.cycles + memfn.write_extra_cycles;
     }
 
-    rmb1(memfn) {
-    }
-
-    rmb2(memfn) {
-    }
-
-    rmb3(memfn) {
-    }
-
-    rmb4(memfn) {
-    }
-
-    rmb5(memfn) {
-    }
-
-    rmb6(memfn) {
-    }
-
-    rmb7(memfn) {
-    }
-
+    //                                            n v b d i z c
+    // ROL   c <- [76543210] <- c                 + - - - - + +
+    //
     rol(memfn) {
+        const val = memfn.read();
+        const res = (val << 1) | (reg.flag.c ? 0x01 : 0x00);
+        memfn.write(res);
+
+        this.reg.flag.test_n(res);
+        this.reg.flag.test_z(res);
+        this.reg.flag.test_c(res);
+        return memfn.cycles + memfn.write_extra_cycles;
     }
 
+    //                                            n v b d i z c
+    // ROR   c -> [76543210] -> c                 + - - - - + +
+    //
     ror(memfn) {
+        const val = memfn.read();
+        const res = (val >> 1) | (reg.flag.c ? 0x80 : 0x00);
+        memfn.write(res);
+
+        this.reg.flag.test_n(res);
+        this.reg.flag.test_z(res);
+        this.reg.flag.test_c(res);
+        return memfn.cycles + memfn.write_extra_cycles;
     }
 
+    //                                            n v b d i z c
+    // RTI   pull sr, pull pc                      from stack
+    //
     rti(memfn) {
+        this.reg.flag.value = stack_pull_byte();
+        this.reg.flag.b = false;
+        this.reg.pc = stack_pull_word();
+        return memfn.cycles;
     }
 
     //                                            n v b d i z c
@@ -812,7 +824,14 @@ class W65C02S
         return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // SMB   set memory bit b                     - - - - - - -
+    //
     smb(b, memfn) {
+        const val = memfn.read();
+        val |= (1 << b);
+        memfn.write(val);
+        return memfn.cycles + memfn.write_extra_cycles;
     }
 
     //                                            n v b d i z c
@@ -820,7 +839,7 @@ class W65C02S
     //
     sta(memfn) {
         memfn.write(this.reg.a);
-        return memfn.cycles; // TODO: extra cycles w/o read?
+        return memfn.cycles;
     }
 
     //                                            n v b d i z c
@@ -835,7 +854,7 @@ class W65C02S
     //
     stx(memfn) {
         memfn.write(this.reg.x);
-        return memfn.cycles; // TODO: extra cycles w/o read?
+        return memfn.cycles;
     }
 
     //                                            n v b d i z c
@@ -843,7 +862,7 @@ class W65C02S
     //
     sty(memfn) {
         memfn.write(this.reg.y);
-        return memfn.cycles; // TODO: extra cycles w/o read?
+        return memfn.cycles;
     }
 
     //                                            n v b d i z c
@@ -851,7 +870,7 @@ class W65C02S
     //
     stz(memfn) {
         memfn.write(0x00);
-        return memfn.cycles; // TODO: extra cycles w/o read?
+        return memfn.cycles;
     }
 
     //                                            n v b d i z c
