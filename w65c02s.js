@@ -105,10 +105,13 @@ const opdef = [
     [ "sty" , 0x8c,     ,     ,     ,     ,     ,     ,     ,     ,     ,     , 0x84,     , 0x94,     ,     ,      ],
     [ "stz" , 0x9c,     , 0x9e,     ,     ,     ,     ,     ,     ,     ,     , 0x64,     , 0x74,     ,     ,      ],
     [ "tax" ,     ,     ,     ,     ,     ,     ,     , 0xaa,     ,     ,     ,     ,     ,     ,     ,     ,      ],
-    [ "tay" ,     ,     , 0xbc,     ,     ,     ,     , 0xab,     ,     ,     ,     ,     ,     ,     ,     ,      ],
-    [ "trb" , 0x1c,     , 0x5e,     ,     ,     ,     ,     ,     ,     ,     , 0x14,     ,     ,     ,     ,      ],
+//    [ "tay" ,     ,     , 0xbc,     ,     ,     ,     , 0xab,     ,     ,     ,     ,     ,     ,     ,     ,      ],
+    [ "tay" ,     ,     ,     ,     ,     ,     ,     , 0xa8,     ,     ,     ,     ,     ,     ,     ,     ,      ],
+//    [ "trb" , 0x1c,     , 0x5e,     ,     ,     ,     ,     ,     ,     ,     , 0x14,     ,     ,     ,     ,      ],
+    [ "trb" , 0x1c,     ,     ,     ,     ,     ,     ,     ,     ,     ,     , 0x14,     ,     ,     ,     ,      ],
     [ "tsb" , 0x0c,     ,     ,     ,     ,     ,     ,     ,     ,     ,     , 0x04,     ,     ,     ,     ,      ],
-    [ "tsx" ,     ,     , 0x1d,     ,     ,     ,     , 0xba,     ,     ,     ,     ,     ,     ,     ,     ,      ],
+//    [ "tsx" ,     ,     , 0x1d,     ,     ,     ,     , 0xba,     ,     ,     ,     ,     ,     ,     ,     ,      ],
+    [ "tsx" ,     ,     ,     ,     ,     ,     ,     , 0xba,     ,     ,     ,     ,     ,     ,     ,     ,      ],
     [ "txa" ,     ,     ,     ,     ,     ,     ,     , 0x8a,     ,     ,     ,     ,     ,     ,     ,     ,      ],
     [ "txs" ,     ,     ,     ,     ,     ,     ,     , 0x9a,     ,     ,     ,     ,     ,     ,     ,     ,      ],
     [ "tya" ,     ,     ,     ,     ,     ,     ,     , 0x98,     ,     ,     ,     ,     ,     ,     ,     ,      ],
@@ -228,7 +231,7 @@ class Register6502
         this._x = 0;
         this._y = 0;
         this._pc = 0;
-        this._sp = 0;
+        this._sp = 0xff;
         this._flags = new Flags6502();
     }
     get a() { return this._a; }
@@ -260,7 +263,7 @@ class Register6502
         this._x = 0;
         this._y = 0;
         this._pc = 0;
-        this._sp = 0;
+        this._sp = 0xff;
         this._flags.reset();
     }
 }
@@ -585,25 +588,60 @@ class W65C02S
         return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // EOR   a ^ m -> a                           + - - - - + -
+    //
     eor(memfn) {
+        this.reg.a ^= memfn.read(); // n & z tests are automatic
+        return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // INC   m + 1 -> m                           + - - - - + -
+    //
     inc(memfn) {
+        const val = memfn.read();
+        const inc = val + 1;
+        memfn.write(inc);
+        this.reg.flag.test_n(inc);
+        this.reg.flag.test_z(inc);
+        this.reg.flag.test_c(inc);
+        return memfn.cycles + memfn.write_extra_cycles;
     }
 
+    //                                            n v b d i z c
+    // INX   x + 1 -> x                           + - - - - + -
+    //
     inx(memfn) {
+        this.reg.x += 1; // n & z tests are automatic
+        return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // INY   y + 1 -> y                           + - - - - + -
+    //
     iny(memfn) {
+        this.reg.y += 1; // n & z tests are automatic
+        return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // JMP   m -> pc                              - - - - - - -
+    //
     jmp(memfn) {
         const addr = memfn.addr();
         this.reg.pc = addr;
         return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // JSR   push pc stack, m -> pc               - - - - - - -
+    //
     jsr(memfn) {
+        const addr = memfn.addr();
+        this.stack_push_word(this.reg.pc);
+        this.reg.pc = addr;
+        return memfn.cycles;
     }
 
     //                                            n v b d i z c
@@ -630,10 +668,26 @@ class W65C02S
         return memfn.cycles;
     }
 
+    //                                            n v b d i z c
+    // LSR   0 -> [76543210] -> c                 + - - - - + +
+    //
     lsr(memfn) {
+        const val = memfn.read();
+        const res = val >> 1;
+        memfn.write(res);
+
+        this.reg.flag.test_n(res);
+        this.reg.flag.test_z(res);
+        this.reg.flag.test_c(res);
+        return memfn.cycles + memfn.write_extra_cycles;
     }
 
+    //                                            n v b d i z c
+    // NOP   no operation                         - - - - - - -
+    //
     nop(memfn) {
+        ;
+        return memfn.cycles;
     }
 
     //                                            n v b d i z c
@@ -701,7 +755,12 @@ class W65C02S
     rti(memfn) {
     }
 
+    //                                            n v b d i z c
+    // RTS   pull stack -> pc                     - - - - - - -
+    //
     rts(memfn) {
+        this.reg.pc = this.stack_pull_word();
+        return memfn.cycles;
     }
 
     //                                            n v b d i z c
@@ -876,6 +935,27 @@ class W65C02S
     // returns cycles used for the operation
     step() {
         return op.step();
+    }
+
+    stack_push_byte(val) {
+        // stack is located at 0x0100
+        this.ram.write(0x0100 | this.reg.sp--, val); // push down --
+    }
+    stack_push_word(val) {
+        const bh = this.reg.pc >> 8;
+        const bl = this.reg.pc & 0xff;
+        this.stack_push_byte(bh);
+        this.stack_push_byte(bl);
+    }
+
+    stack_pull_byte() {
+        // stack is located at 0x0100
+        return this.ram.read(0x0100 | ++this.reg.sp); // pull up ++
+    }
+    stack_pull_word(val) {
+        const bl = this.stack_pull_byte();
+        const bh = this.stack_pull_byte();
+        return (bh << 8) | bl;
     }
 
     init() {
@@ -1114,6 +1194,7 @@ class W65C02S
             for(let j=0; j<18; j++) {        // enum address modes for the entry
                 const opnum = opentry[j+1];  // op num for addr mode: 0x6d
                 if(opnum != undefined) {     // op supports this address mode?
+                    if(this.op[opnum]) throw new Error("opcode 0x"+opnum.toString(16).padStart(2, '0')+" already in use");
                     const memfn = addr_mode[j];
                     if(opname.length > 3) {
                         // digit 4 is the bit num
