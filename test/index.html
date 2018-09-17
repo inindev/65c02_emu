@@ -24,17 +24,22 @@
     }
     button {
         margin: 4px;
+        margin-top: 0;
+        padding-bottom: 2px;
         border: 1px solid #c5c5c5;
         border-radius: 3px;
         width: 6em;
         height: 2em;
-        font-size: 14px;
+        font-size: 13px;
         color: #f5f5ef;
         background: #734d26;
     }
     button:active {
         color: #520;
         background: #499;
+    }
+    #debug {
+        margin-right: 7px;
     }
     .row {
         padding: 4em;
@@ -101,11 +106,11 @@
 
     <div class="col1">
       <div id="regdisp">
-        <div>a = 00&nbsp;&nbsp;&nbsp;pc = 0000</div>
+        <div>a = 00&nbsp;&nbsp;&nbsp;pc = 0000&nbsp;&nbsp;(00&nbsp;00&nbsp;00)</div>
         <div>x = 00&nbsp;&nbsp;&nbsp;sp =&nbsp;&nbsp;&nbsp;ff&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;n v . b&nbsp;&nbsp;d i z c</div>
         <div>y = 00&nbsp;&nbsp;&nbsp;sf =&nbsp;&nbsp;&nbsp;00&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0 0 + 0&nbsp;&nbsp;0 0 0 0</div>
       </div>
-      <div><button id="step">step</button><button id="run_stop">run</button><button id="reset">reset</button></div>
+      <div><button id="step">step</button><button id="run_stop">run</button><button id="reset">reset</button><span style="vertical-align: middle;">&nbsp;<input id="debug" type="checkbox"><label for="debug">debug</label></span></div>
       <div id="output" style="margin: 1em; margin-top: 2em;"></div>
     </div>
 
@@ -145,6 +150,7 @@
     var output;
     var hexval;
     var run_stop;
+    var debug;
     var interval;
 
     function setup() {
@@ -212,9 +218,12 @@
         }
     }
 
-    function step_many() {
-//        for(let i=0; i<50; i++) step();
-        for(let i=0; i<128; i++) cpu.step();
+    function on_interval() {
+        if(debug.checked) {
+            for(let i=0; i<48; i++) step();
+        } else {
+            for(let i=0; i<128; i++) cpu.step();
+        }
     }
 
     function run_toggle() {
@@ -223,7 +232,7 @@
             interval = undefined;
             run_stop.innerText = "run";
         } else {
-            interval = setInterval(step_many, 1);
+            interval = setInterval(on_interval, 1);
             run_stop.innerText = "stop";
         }
     }
@@ -270,9 +279,15 @@
         flag_str += (reg.flag.z) ? "1 " : "0 ";
         flag_str += (reg.flag.c) ? "1 " : "0 ";
 
-        regdisp.innerHTML  = "<div>a = " +reg.a.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;pc = " +reg.pc.toString(16).padStart(4, '0')+ "</div>";
-        regdisp.innerHTML += "<div>x = " +reg.x.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;sp = &nbsp;&nbsp;" +reg.sp.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;n v . b &nbsp;d i z c</div>";
-        regdisp.innerHTML += "<div>y = " +reg.y.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;sf = &nbsp;&nbsp;" +reg.flag.value.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" +flag_str+ "</div>";
+        const pcb0 = ram.read(reg.pc);
+        const pcb1 = ram.read(reg.pc+1);
+        const pcb2 = ram.read(reg.pc+2);
+        const pcb3 = ram.read(reg.pc+3);
+        const pcb4 = ram.read(reg.pc+4);
+        const pcb5 = ram.read(reg.pc+5);
+        regdisp.innerHTML = "<div>a = " +reg.a.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;pc = " +reg.pc.toString(16).padStart(4, '0')+ "&nbsp;&nbsp;(" +pcb0.toString(16).padStart(2, '0')+ "&nbsp;" +pcb1.toString(16).padStart(2, '0')+ "&nbsp;" +pcb2.toString(16).padStart(2, '0')+ "&nbsp;" +pcb3.toString(16).padStart(2, '0')+ "&nbsp;" +pcb4.toString(16).padStart(2, '0')+ "&nbsp;" +pcb5.toString(16).padStart(2, '0')+ ")</div>" +
+                            "<div>x = " +reg.x.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;sp = &nbsp;&nbsp;" +reg.sp.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;n v . b &nbsp;d i z c</div>" +
+                            "<div>y = " +reg.y.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;sf = &nbsp;&nbsp;" +reg.flag.value.toString(16).padStart(2, '0')+ "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" +flag_str+ "</div>";
     }
 
     function init() {
@@ -282,6 +297,7 @@
         document.getElementById("step").addEventListener("click", step);
         run_stop = document.getElementById("run_stop");
         run_stop.addEventListener("click", run_toggle);
+        debug = document.getElementById("debug");
         document.getElementById("reset").addEventListener("click", reset);
 
         // random number generator at zp $fe
