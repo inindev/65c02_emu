@@ -136,7 +136,6 @@
     </div>
   </div>
 
-
   <script src="../w65c02s.js"></script>
   <script src="../display.js"></script>
   <script src="./tests.js"></script>
@@ -166,9 +165,7 @@
 //        load_test(ram, test.dec.accum);
 //        load_test(ram, test.dec.zp);
 //        load_test(ram, test.dec.zp_x);
-//        load_test(ram, test.jsr.abs);
-//        load_test(ram, test.programs.alive);
-        load_test(ram, test.programs.brickout);
+        load_test(ram, test.jsr.abs);
 
 
         // display memory
@@ -216,7 +213,8 @@
     }
 
     function step_many() {
-        for(let i=0; i<64; i++) step();
+//        for(let i=0; i<50; i++) step();
+        for(let i=0; i<128; i++) cpu.step();
     }
 
     function run_toggle() {

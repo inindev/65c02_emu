@@ -415,9 +415,8 @@ class W65C02S
     //
     bbr(b, memfn) {
         const val = memfn.read();
-        const offs = memfn.offset();
         if(!((val >> b) & 0x01)) {
-            memfn.branch(offs);
+            this.reg.pc = memfn.addr();
             return memfn.cycles + memfn.branch_extra_cycles;
         }
         return memfn.cycles;
@@ -428,9 +427,8 @@ class W65C02S
     //
     bbs(b, memfn) {
         const val = memfn.read();
-        const offs = memfn.offset();
         if((val >> b) & 0x01) {
-            memfn.branch(offs);
+            this.reg.pc = memfn.addr();
             return memfn.cycles + memfn.branch_extra_cycles;
         }
         return memfn.cycles;
@@ -440,9 +438,8 @@ class W65C02S
     // BCC   branch on carry clear (c = 0)        - - - - - - -
     //
     bcc(memfn) {
-        const offs = memfn.offset();
         if(!this.reg.flag.c) {
-            memfn.branch(offs);
+            this.reg.pc = memfn.addr();
             return memfn.cycles + memfn.branch_extra_cycles;
         }
         return memfn.cycles;
@@ -452,9 +449,8 @@ class W65C02S
     // BCS   branch on carry set (c = 1)          - - - - - - -
     //
     bcs(memfn) {
-        const offs = memfn.offset();
         if(this.reg.flag.c) {
-            memfn.branch(offs);
+            this.reg.pc = memfn.addr();
             return memfn.cycles + memfn.branch_extra_cycles;
         }
         return memfn.cycles;
@@ -464,9 +460,8 @@ class W65C02S
     // BEQ   branch on result zero (z = 1)        - - - - - - -
     //
     beq(memfn) {
-        const offs = memfn.offset();
         if(this.reg.flag.z) {
-            memfn.branch(offs);
+            this.reg.pc = memfn.addr();
             return memfn.cycles + memfn.branch_extra_cycles;
         }
         return memfn.cycles;
@@ -496,9 +491,8 @@ class W65C02S
     // BMI   branch on result minus (n = 1)       - - - - - - -
     //
     bmi(memfn) {
-        const offs = memfn.offset();
         if(this.reg.flag.n) {
-            memfn.branch(offs);
+            this.reg.pc = memfn.addr();
             return memfn.cycles + memfn.branch_extra_cycles;
         }
         return memfn.cycles;
@@ -508,9 +502,8 @@ class W65C02S
     // BNE   branch on result not zero (z = 0)    - - - - - - -
     //
     bne(memfn) {
-        const offs = memfn.offset();
         if(!this.reg.flag.z) {
-            memfn.branch(offs);
+            this.reg.pc = memfn.addr();
             return memfn.cycles + memfn.branch_extra_cycles;
         }
         return memfn.cycles;
@@ -520,9 +513,8 @@ class W65C02S
     // BPL   branch on result plus (n = 0)        - - - - - - -
     //
     bpl(memfn) {
-        const offs = memfn.offset();
         if(!this.reg.flag.n) {
-            memfn.branch(offs);
+            this.reg.pc = memfn.addr();
             return memfn.cycles + memfn.branch_extra_cycles;
         }
         return memfn.cycles;
@@ -532,8 +524,7 @@ class W65C02S
     // BRA   branch always                        - - - - - - -
     //
     bra(memfn) {
-        const offs = memfn.offset();
-        memfn.branch(offs);
+        this.reg.pc = memfn.addr();
         return memfn.cycles + memfn.branch_extra_cycles;
     }
 
@@ -551,9 +542,8 @@ class W65C02S
     // BVC   branch on overflow clear (v = 0)     - - - - - - -
     //
     bvc(memfn) {
-        const offs = memfn.offset();
         if(!this.reg.flag.v) {
-            memfn.branch(offs);
+            this.reg.pc = memfn.addr();
             return memfn.cycles + memfn.branch_extra_cycles;
         }
         return memfn.cycles;
@@ -563,9 +553,8 @@ class W65C02S
     // BVS   branch on overflow set (v = 1)       - - - - - - -
     //
     bvs(memfn) {
-        const offs = memfn.offset();
         if(this.reg.flag.v) {
-            memfn.branch(offs);
+            this.reg.pc = memfn.addr();
             return memfn.cycles + memfn.branch_extra_cycles;
         }
         return memfn.cycles;
@@ -713,8 +702,7 @@ class W65C02S
     // JMP   m -> pc                              - - - - - - -
     //
     jmp(memfn) {
-        const addr = memfn.addr();
-        this.reg.pc = addr;
+        this.reg.pc = memfn.addr();
         return memfn.cycles;
     }
 
@@ -722,9 +710,8 @@ class W65C02S
     // JSR   push pc stack, m -> pc               - - - - - - -
     //
     jsr(memfn) {
-        const addr = memfn.addr();
         this.stack_push_word(this.reg.pc);
-        this.reg.pc = addr;
+        this.reg.pc = memfn.addr();
         return memfn.cycles;
     }
 
@@ -762,7 +749,7 @@ class W65C02S
 
         this.reg.flag.test_n(res);
         this.reg.flag.test_z(res);
-        this.reg.flag.test_c(res);
+        this.reg.flag.c = val & 0x01;
         return memfn.cycles + memfn.write_extra_cycles;
     }
 
@@ -881,7 +868,7 @@ class W65C02S
 
         this.reg.flag.test_n(res);
         this.reg.flag.test_z(res);
-        this.reg.flag.test_c(res);
+        this.reg.flag.c = val & 0x01;
         return memfn.cycles + memfn.write_extra_cycles;
     }
 
@@ -945,7 +932,7 @@ class W65C02S
     }
 
     //                                            n v b d i z c
-    // SEI   1 -> d                               - - - - 1 - -
+    // SEI   1 -> i                               - - - - 1 - -
     //
     sei(memfn) {
         this.reg.flag.i = true;
@@ -974,7 +961,7 @@ class W65C02S
     // STP   processor halt                       - - - - - - -
     //
     stp(memfn) {
-        return memfn.cycles;
+        return memfn.cycles;// TODO: return -1?
     }
 
     //                                            n v b d i z c
@@ -1222,12 +1209,10 @@ class W65C02S
             } })(),
 
             // 9a. Program Counter Relative  r
-            ((addr) => { return {
+            ((offs) => { return {
                 name: "relative_pc",
-                init: () => { },
-                offset: () => { return pop_byte_pc(); },
-                //TODO: 2c math?
-                branch: (offs) => { this.reg.pc += (offs & 0xff); if(offs & 0x80) this.reg.pc -= 0x100; },
+                init: () => { offs = pop_byte_pc(); },
+                addr: () => { return (this.reg.pc + ((offs & 0x80) ? (offs | 0xff00) : offs)) & 0xffff; },
                 bytes: 2,
                 cycles: 2,
                 branch_extra_cycles: 1
@@ -1237,13 +1222,11 @@ class W65C02S
             //     note: not explicity described in the w65c02s datasheet
             //       but applies to BBRb zp,offs and BBSb zp,offs operations
             //       BBRb and BBSb are three byte operations
-            ((addr) => { return {
+            ((zpoffs) => { return {
                 name: "zero_page_relative_pc",
-                init: () => { addr = pop_byte_pc(); },
-                read: () => { return this.ram.read(addr); },
-                offset: () => { return pop_byte_pc(); },
-                //TODO: 2c math?
-                branch: (offs) => { this.reg.pc += (offs & 0xff); if(offs & 0x80) this.reg.pc -= 0x100; },
+                init: () => { zpoffs = (pop_byte_pc() << 8) | pop_byte_pc(); }, // zp << 8 | r
+                addr: () => { return (this.reg.pc + ((zpoffs & 0x80) ? (zpoffs | 0xff00) : (zpoffs & 0xff))) & 0xffff; },
+                read: () => { return this.ram.read(zpoffs >> 8); },
                 bytes: 3,
                 cycles: 2,
                 branch_extra_cycles: 1
