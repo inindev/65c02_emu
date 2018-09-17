@@ -88,6 +88,11 @@
     .hexdata>div>input:not([type=checkbox]).active {
         color: red;
     }
+
+    canvas.screen {
+        border: 1px solid black;
+        background: #fff;
+    }
   </style>
 </head>
 
@@ -100,7 +105,7 @@
         <div>x = 00&nbsp;&nbsp;&nbsp;sp =&nbsp;&nbsp;&nbsp;ff&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;n v . b&nbsp;&nbsp;d i z c</div>
         <div>y = 00&nbsp;&nbsp;&nbsp;sf =&nbsp;&nbsp;&nbsp;00&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0 0 + 0&nbsp;&nbsp;0 0 0 0</div>
       </div>
-      <div><button id="step">step</button><button id="reset">reset</button></div>
+      <div><button id="step">step</button><button id="run_stop">run</button><button id="reset">reset</button></div>
       <div id="output" style="margin: 1em; margin-top: 2em;"></div>
     </div>
 
@@ -127,16 +132,21 @@
     </div>
 
     <div class="col3">
+        <canvas class="screen"></canvas>
     </div>
   </div>
 
 
   <script src="../w65c02s.js"></script>
+  <script src="../display.js"></script>
   <script src="./tests.js"></script>
   <script>
+    var display;
     var cycles;
     var output;
     var hexval;
+    var run_stop;
+    var interval;
 
     function setup() {
         // setup tests (see tests.js)
@@ -156,7 +166,9 @@
 //        load_test(ram, test.dec.accum);
 //        load_test(ram, test.dec.zp);
 //        load_test(ram, test.dec.zp_x);
-        load_test(ram, test.jsr.abs);
+//        load_test(ram, test.jsr.abs);
+//        load_test(ram, test.programs.alive);
+        load_test(ram, test.programs.brickout);
 
 
         // display memory
@@ -203,8 +215,30 @@
         }
     }
 
+    function step_many() {
+        for(let i=0; i<64; i++) step();
+    }
+
+    function run_toggle() {
+        if(interval) {
+            clearInterval(interval);
+            interval = undefined;
+            run_stop.innerText = "run";
+        } else {
+            interval = setInterval(step_many, 1);
+            run_stop.innerText = "stop";
+        }
+    }
+
     function reset() {
+        if(interval) {
+            clearInterval(interval);
+            interval = undefined;
+            run_stop.innerText = "run";
+        }
+
         cpu.reset();
+        display.reset();
         cpu.register.pc = 0x2000;
         for(let i=0; i<hexval.length; i++) {
             if(i == (cpu.register.pc-0x2000)) {
@@ -248,8 +282,28 @@
         regdisp = document.getElementById("regdisp");
         hexval = document.querySelectorAll("div.hexdata>div>input:not([type=checkbox]");
         document.getElementById("step").addEventListener("click", step);
+        run_stop = document.getElementById("run_stop");
+        run_stop.addEventListener("click", run_toggle);
         document.getElementById("reset").addEventListener("click", reset);
+
+        // random number generator at zp $fe
+        ram.read_hook(0x00fe, 0x00fe, () => { return Math.floor(Math.random() * 256); });
+
+        // store keycode in zp $ff
+        document.addEventListener('keypress', (event) => { ram.write(0xff, event.which); });
+
+        init_screen();
         setup();
+    }
+
+    function init_screen() {
+        const screen = document.querySelector("canvas.screen");
+        screen.width = 12 * 32;
+        screen.height = 9 * 32;
+
+        display = new Display(ram);
+        display.set_resolution(screen, 32, 32, 0x0200);
+        display.set_palette("pal_c64");
     }
 
     if(document.readyState === "loading") {
