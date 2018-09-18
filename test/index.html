@@ -171,8 +171,15 @@
 //        load_test(ram, test.dec.accum);
 //        load_test(ram, test.dec.zp);
 //        load_test(ram, test.dec.zp_x);
-        load_test(ram, test.jsr.abs);
+//        load_test(ram, test.jsr.abs);
 
+        let obj = test;
+        const params = window.location.search.substr(1).split(".");
+        for(const param of params) {
+            if(!obj) break;
+            obj = obj[param];
+        }
+        load_test(ram, obj || test.jsr.abs);
 
         // display memory
         for(let i=0; i<hexval.length; i++) {
