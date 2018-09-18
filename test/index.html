@@ -9,7 +9,7 @@
     body {
         margin: 0px;
         padding: 0px;
-        border: 0px;        
+        border: 0px;
         font-size: 13px;
         font-family: "Lucida Console", Monaco, monospace;
         background: #e1e1d0;
@@ -27,16 +27,21 @@
         margin-top: 0;
         padding-bottom: 2px;
         border: 1px solid #c5c5c5;
-        border-radius: 3px;
+        border-radius: 4px;
         width: 6em;
         height: 2em;
         font-size: 13px;
         color: #f5f5ef;
         background: #734d26;
     }
-    button:active {
+    button:hover:active {
         color: #520;
-        background: #499;
+        background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #377b7b), color-stop(1, #499));
+        background:-moz-linear-gradient(center top, #377b7b 5%, #499 100%);
+    }
+    button:hover {
+        background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #86592d), color-stop(1, #734d26));
+        background:-moz-linear-gradient(center top, #86592d 5%, #734d26 100%);
     }
     #debug {
         margin-right: 7px;
@@ -84,7 +89,7 @@
     }
     .hexdata>div>input:not([type=checkbox]) {
         margin: 3px;
-        padding-left: 1em; 
+        padding-left: 1em;
         width: 6em;
         font-size: 12px;
         border: 1px solid #c5c5c5;
@@ -331,7 +336,7 @@
         document.addEventListener("DOMContentLoaded", init);
     } else {
         init();
-    }        
+    }
   </script>
 </body>
 </html>
