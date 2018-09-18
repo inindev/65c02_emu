@@ -131,22 +131,20 @@ class RAM
     }
 
     read(addr) {
-        addr = addr & 0xffff;
+        addr &= 0xffff;
         if((addr >= this.read_hook_addr_begin) && (addr <= this.read_hook_addr_end) && (typeof this.read_hook_callback === "function")) {
             return this.read_hook_callback(addr) & 0xff;
-        }        
+        }
         return this.u8a[addr & 0xffff];
     }
 
     // little endian read
     read_word(addr) {
-        const bl = this.read(addr);
-        const bh = this.read(addr + 1) << 8;
-        return bh | bl;
+        return this.read(addr) | this.read(addr+1)<<8;
     }
 
     write(addr, val) {
-        addr = addr & 0xffff;
+        addr &= 0xffff;
         this.u8a[addr] = val;
         if((addr >= this.write_hook_addr_begin) && (addr <= this.write_hook_addr_end) && (typeof this.write_hook_callback === "function")) {
             this.write_hook_callback(addr, (val & 0xff));
@@ -206,13 +204,13 @@ class RAM
         addr_begin = addr_begin || 0;
         addr_end = addr_end || u8Array.length-1;
 
-        var out = "";
-        for(var i=addr_begin; i<=addr_end; i+=16) {
-            var row = i.toString(16).padStart(4, '0') + "  ";
-            var asc = "";
-            for(var j=i; j<i+16; j++) {
+        let out = "";
+        for(let i=addr_begin; i<=addr_end; i+=16) {
+            let row = i.toString(16).padStart(4, '0') + "  ";
+            let asc = "";
+            for(let j=i; j<i+16; j++) {
                 if(j <= addr_end) {
-                    var val = read(j);
+                    const val = read(j);
                     row += val.toString(16).padStart(2, '0') + " ";
                     asc += val<0x20 || val>0x7e && val<0xc0 || val==0xf7 ? "." : String.fromCharCode(val);
                 }
@@ -1076,20 +1074,16 @@ class W65C02S
         this.ram.write(0x0100 | this.reg.sp--, val); // push down --
     }
     stack_push_word(val) {
-        const bh = this.reg.pc >> 8;
-        const bl = this.reg.pc & 0xff;
-        this.stack_push_byte(bh);
-        this.stack_push_byte(bl);
+        this.stack_push_byte(val >> 8);
+        this.stack_push_byte(val & 0xff);
     }
 
     stack_pull_byte() {
         // stack is located at 0x0100
         return this.ram.read(0x0100 | ++this.reg.sp); // pull up ++
     }
-    stack_pull_word(val) {
-        const bl = this.stack_pull_byte();
-        const bh = this.stack_pull_byte();
-        return (bh << 8) | bl;
+    stack_pull_word() {
+        return this.stack_pull_byte() | this.stack_pull_byte()<<8;
     }
 
     init() {
@@ -1222,11 +1216,11 @@ class W65C02S
             //     note: not explicity described in the w65c02s datasheet
             //       but applies to BBRb zp,offs and BBSb zp,offs operations
             //       BBRb and BBSb are three byte operations
-            ((zpoffs) => { return {
+            ((addr, offs) => { return {
                 name: "zero_page_relative_pc",
-                init: () => { zpoffs = (pop_byte_pc() << 8) | pop_byte_pc(); }, // zp << 8 | r
-                addr: () => { return (this.reg.pc + ((zpoffs & 0x80) ? (zpoffs | 0xff00) : (zpoffs & 0xff))) & 0xffff; },
-                read: () => { return this.ram.read(zpoffs >> 8); },
+                init: () => { addr = pop_byte_pc(); offs = pop_byte_pc(); },
+                read: () => { return this.ram.read(addr); },
+                addr: () => { return (this.reg.pc + ((offs & 0x80) ? (offs | 0xff00) : offs)) & 0xffff; },
                 bytes: 3,
                 cycles: 2,
                 branch_extra_cycles: 1
@@ -1239,7 +1233,7 @@ class W65C02S
                 bytes: 1,  // TODO: up to +3 stack bytes
                 cycles: 3,
                 write_extra_cycles: 0
-                // TODO: +4 cycles possible 
+                // TODO: +4 cycles possible
             } })(),
 
             // 11. Zero Page  zp
