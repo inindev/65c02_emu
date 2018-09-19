@@ -847,7 +847,7 @@ class W65C02S
     //
     rol(memfn) {
         const val = memfn.read();
-        const res = (val << 1) | (reg.flag.c ? 0x01 : 0x00);
+        const res = (val << 1) | (this.reg.flag.c ? 0x01 : 0x00);
         memfn.write(res);
 
         this.reg.flag.test_n(res);
@@ -861,7 +861,7 @@ class W65C02S
     //
     ror(memfn) {
         const val = memfn.read();
-        const res = (val >> 1) | (reg.flag.c ? 0x80 : 0x00);
+        const res = (val >> 1) | (this.reg.flag.c ? 0x80 : 0x00);
         memfn.write(res);
 
         this.reg.flag.test_n(res);
