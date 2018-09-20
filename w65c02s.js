@@ -210,7 +210,7 @@ class RAM
             let asc = "";
             for(let j=i; j<i+16; j++) {
                 if(j <= addr_end) {
-                    const val = read(j);
+                    const val = this.read(j);
                     row += val.toString(16).padStart(2, '0') + " ";
                     asc += val<0x20 || val>0x7e && val<0xc0 || val==0xf7 ? "." : String.fromCharCode(val);
                 }
@@ -708,7 +708,7 @@ class W65C02S
     // JSR   push pc stack, m -> pc               - - - - - - -
     //
     jsr(memfn) {
-        this.stack_push_word(this.reg.pc);
+        this.stack_push_word(this.reg.pc - 1);
         this.reg.pc = memfn.addr();
         return memfn.cycles;
     }
@@ -884,7 +884,7 @@ class W65C02S
     // RTS   pull stack -> pc                     - - - - - - -
     //
     rts(memfn) {
-        this.reg.pc = this.stack_pull_word();
+        this.reg.pc = this.stack_pull_word() + 1;
         return memfn.cycles;
     }
 
@@ -1066,7 +1066,13 @@ class W65C02S
     // step one instruction
     // returns cycles used for the operation
     step() {
-        return op.step();
+        const opcode = this.ram.read(this.reg.pc++);
+        const opfcn = this.op[opcode];
+        if(!opfcn) {
+            console.log("!!!! illegal opcode: 0x" + opcode.toString(16).padStart(2, '0'));
+            return -1;  // TODO: enter invalid opcodes
+        }
+        return opfcn();
     }
 
     stack_push_byte(val) {
@@ -1310,8 +1316,8 @@ class W65C02S
         ];
 
 
+        // build the opcode lookup table
         this.op = [ ];
-        this.step = () => { return this.op[pop_byte_pc()](); };
         for(let i=0; i<opdef.length; i++) {
             const opentry = opdef[i];        // the whole line: [ "adc" , 0x6d...
             const opname = opentry[0];       // the name: "adc"
