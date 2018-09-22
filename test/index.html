@@ -232,9 +232,9 @@
 
     function on_interval() {
         if(debug.checked) {
-            for(let i=0; i<48; i++) step();
+            for(let i=0; i<512; i++) step();
         } else {
-            for(let i=0; i<128; i++) cpu.step();
+            for(let i=0; i<2048; i++) cpu.step();
         }
     }
 
@@ -244,7 +244,7 @@
             interval = undefined;
             run_stop.innerText = "run";
         } else {
-            interval = setInterval(on_interval, 1);
+            interval = setInterval(on_interval, 50); // 20 per sec
             run_stop.innerText = "stop";
         }
     }
