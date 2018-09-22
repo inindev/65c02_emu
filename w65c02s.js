@@ -195,6 +195,10 @@ class RAM
         arr.map((v, i) => { this.write(offs+i, v); });
     }
 
+    fill(val, addr_begin, addr_end) {
+        this.u8a.fill(val, addr_begin, addr_end + 1);
+    }
+
     reset() {
         this.u8a.fill(0);
     }
@@ -639,7 +643,6 @@ class W65C02S
         memfn.write(dec);
         this.reg.flag.test_n(dec);
         this.reg.flag.test_z(dec);
-        this.reg.flag.test_c(dec);
         return memfn.cycles + memfn.write_extra_cycles;
     }
 
@@ -676,7 +679,6 @@ class W65C02S
         memfn.write(inc);
         this.reg.flag.test_n(inc);
         this.reg.flag.test_z(inc);
-        this.reg.flag.test_c(inc);
         return memfn.cycles + memfn.write_extra_cycles;
     }
 
