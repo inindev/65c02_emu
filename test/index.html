@@ -149,9 +149,12 @@
   </div>
 
   <script src="../w65c02s.js"></script>
+  <script src="../ram.js"></script>
   <script src="../display.js"></script>
   <script src="./tests.js"></script>
   <script>
+    const ram = new RAM();
+    const cpu = new W65C02S(ram);
     var display;
     var cycles;
     var output;
