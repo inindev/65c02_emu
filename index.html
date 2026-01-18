@@ -1,0 +1,1912 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="description" content="w65c02s emulator">
+  <meta name="author" content="John Clark">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>W65C02S Emulator Trainer</title>
+  <style type="text/css">
+    * { box-sizing: border-box; }
+
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+        font-size: 13px;
+        background: #1e1e1e;
+        color: #d4d4d4;
+    }
+
+    .container {
+        display: flex;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    .sidebar {
+        width: 350px;
+        background: #252526;
+        border-right: 1px solid #3e3e42;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+    }
+
+    .main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .toolbar {
+        background: #2d2d30;
+        border-bottom: 1px solid #3e3e42;
+        padding: 8px 12px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    button {
+        background: #0e639c;
+        color: #fff;
+        border: 1px solid #0e639c;
+        border-radius: 2px;
+        padding: 5px 14px;
+        font-size: 13px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: background 0.15s;
+    }
+
+    button:hover {
+        background: #1177bb;
+    }
+
+    button:active {
+        background: #0d5a8f;
+    }
+
+    button.secondary {
+        background: #3e3e42;
+        border-color: #3e3e42;
+    }
+
+    button.secondary:hover {
+        background: #505050;
+    }
+
+    button.danger {
+        background: #c5302f;
+        border-color: #c5302f;
+    }
+
+    button.danger:hover {
+        background: #dd4948;
+    }
+
+    button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .section {
+        padding: 12px;
+        border-bottom: 1px solid #3e3e42;
+    }
+
+    .section-title {
+        font-weight: bold;
+        margin-bottom: 8px;
+        color: #4ec9b0;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .register-display {
+        background: #1e1e1e;
+        padding: 10px;
+        border-radius: 3px;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .register-line {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 4px;
+    }
+
+    .register-label {
+        color: #9cdcfe;
+        min-width: 40px;
+    }
+
+    .register-value {
+        font-family: 'Monaco', monospace;
+        color: #b5cea8;
+    }
+
+    .register-value.editable {
+        cursor: pointer;
+        padding: 2px 6px;
+        border: 1px solid transparent;
+        border-radius: 2px;
+        transition: all 0.2s;
+        user-select: none;
+    }
+
+    .register-value.editable:hover {
+        background: #37373d;
+        border-color: #0e639c;
+    }
+
+    .register-value.editing {
+        background: #3c3c3c;
+        border-color: #0e639c;
+        color: #fff;
+        outline: none;
+        cursor: text;
+        user-select: text;
+        box-shadow: 0 0 8px rgba(14, 99, 156, 0.5);
+    }
+
+    .flags {
+        display: flex;
+        gap: 6px;
+        font-family: 'Monaco', monospace;
+    }
+
+    .flag {
+        padding: 2px 4px;
+        border-radius: 2px;
+        font-size: 11px;
+    }
+
+    .flag.active {
+        background: #0e639c;
+        color: #fff;
+    }
+
+    .flag.inactive {
+        background: #3e3e42;
+        color: #858585;
+    }
+
+    .memory-viewer {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .memory-controls {
+        padding: 8px 12px;
+        background: #2d2d30;
+        border-bottom: 1px solid #3e3e42;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .memory-controls label {
+        font-size: 12px;
+        color: #858585;
+    }
+
+    .memory-controls input[type="text"] {
+        background: #3c3c3c;
+        border: 1px solid #3e3e42;
+        color: #d4d4d4;
+        padding: 4px 8px;
+        border-radius: 2px;
+        font-family: 'Monaco', monospace;
+        font-size: 12px;
+        width: 80px;
+    }
+
+    .memory-controls select {
+        background: #3c3c3c;
+        border: 1px solid #3e3e42;
+        color: #d4d4d4;
+        padding: 4px 8px;
+        border-radius: 2px;
+        font-family: inherit;
+        font-size: 12px;
+    }
+
+    .memory-hex {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+        background: #1e1e1e;
+        font-family: 'Monaco', monospace;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+
+    .memory-row {
+        display: flex;
+        margin-bottom: 2px;
+        overflow: hidden;
+    }
+
+    .memory-addr {
+        color: #858585;
+        margin-right: 12px;
+        user-select: none;
+        min-width: 50px;
+    }
+
+    .memory-bytes {
+        display: flex;
+        gap: 8px;
+    }
+
+    .memory-byte {
+        color: #b5cea8;
+        cursor: pointer;
+        padding: 1px 3px;
+        border-radius: 2px;
+        border: 1px solid transparent;
+        min-width: 20px;
+        text-align: center;
+        transition: all 0.15s;
+        user-select: none;
+    }
+
+    .memory-byte:hover {
+        background: #37373d;
+    }
+
+    .memory-byte.editing {
+        background: #3c3c3c;
+        border-color: #0e639c;
+        color: #fff;
+        outline: none;
+        cursor: text;
+        user-select: text;
+        box-shadow: 0 0 8px rgba(14, 99, 156, 0.5);
+    }
+
+    .memory-byte.pc {
+        background: #0e639c;
+        color: #fff;
+        font-weight: bold;
+    }
+
+    .memory-byte.breakpoint {
+        background: #c5302f;
+        color: #fff;
+    }
+
+    .memory-byte.changed {
+        background: #4ec9b0;
+        color: #000;
+        animation: flash 0.5s ease-out;
+    }
+
+    @keyframes flash {
+        0% { background: #ffeb3b; }
+        100% { background: #4ec9b0; }
+    }
+
+    .memory-ascii {
+        color: #ce9178;
+        margin-left: 28px;
+        user-select: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: clip;
+    }
+
+    .disassembly {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+        background: #1e1e1e;
+        font-family: 'Monaco', monospace;
+        font-size: 12px;
+        line-height: 1.6;
+    }
+
+    .disasm-line {
+        display: flex;
+        padding: 2px 4px;
+        margin-bottom: 1px;
+        cursor: pointer;
+        border-radius: 2px;
+    }
+
+    .disasm-line:hover {
+        background: #37373d;
+    }
+
+    .disasm-line.current {
+        background: #0e639c;
+        color: #fff;
+    }
+
+    .disasm-line.breakpoint::before {
+        content: '●';
+        color: #c5302f;
+        margin-right: 8px;
+    }
+
+    .disasm-addr {
+        color: #858585;
+        margin-right: 12px;
+        min-width: 50px;
+    }
+
+    .disasm-bytes {
+        color: #b5cea8;
+        margin-right: 12px;
+        min-width: 90px;
+    }
+
+    .disasm-instruction {
+        color: #569cd6;
+        margin-right: 8px;
+        min-width: 50px;
+    }
+
+    .disasm-operand {
+        color: #9cdcfe;
+    }
+
+    .tabs {
+        display: flex;
+        background: #2d2d30;
+        border-bottom: 1px solid #3e3e42;
+    }
+
+    .tab {
+        padding: 8px 16px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        font-size: 13px;
+        color: #858585;
+        user-select: none;
+    }
+
+    .tab:hover {
+        color: #d4d4d4;
+    }
+
+    .tab.active {
+        color: #fff;
+        border-bottom-color: #0e639c;
+    }
+
+    .tab-content {
+        display: none;
+        flex: 1;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .tab-content.active {
+        display: flex;
+    }
+
+    .console {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+        background: #1e1e1e;
+        font-family: 'Monaco', monospace;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+
+    .console-line {
+        margin-bottom: 2px;
+    }
+
+    .console-line.info { color: #4ec9b0; }
+    .console-line.error { color: #f48771; }
+    .console-line.warning { color: #dcdcaa; }
+
+    .breakpoints-list {
+        padding: 12px;
+    }
+
+    .breakpoint-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 8px;
+        background: #1e1e1e;
+        margin-bottom: 4px;
+        border-radius: 2px;
+    }
+
+    .breakpoint-addr {
+        font-family: 'Monaco', monospace;
+        color: #b5cea8;
+    }
+
+    .breakpoint-remove {
+        background: #c5302f;
+        border: none;
+        color: #fff;
+        padding: 2px 8px;
+        font-size: 11px;
+        border-radius: 2px;
+        cursor: pointer;
+    }
+
+    .stack-viewer {
+        padding: 12px;
+        background: #1e1e1e;
+    }
+
+    .stack-item {
+        font-family: 'Monaco', monospace;
+        font-size: 12px;
+        padding: 2px 4px;
+        margin-bottom: 2px;
+    }
+
+    .stack-item.sp {
+        background: #0e639c;
+        color: #fff;
+    }
+
+    .speed-control {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .speed-control input[type="range"] {
+        width: 100px;
+    }
+
+    .speed-label {
+        font-size: 12px;
+        color: #858585;
+        min-width: 60px;
+    }
+
+    input[type="checkbox"] {
+        cursor: pointer;
+    }
+
+    label {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .status-bar {
+        background: #007acc;
+        color: #fff;
+        padding: 4px 12px;
+        font-size: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .status-item {
+        margin-right: 16px;
+    }
+
+    .canvas-container {
+        padding: 12px;
+        background: #1e1e1e;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    canvas.screen {
+        border: 1px solid #3e3e42;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+    }
+
+    .help-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .help-overlay.active {
+        display: flex;
+    }
+
+    .help-content {
+        background: #252526;
+        border: 1px solid #3e3e42;
+        border-radius: 4px;
+        padding: 24px;
+        max-width: 600px;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    .help-content h2 {
+        margin-top: 0;
+        color: #4ec9b0;
+    }
+
+    .help-content h3 {
+        color: #9cdcfe;
+        margin-top: 20px;
+    }
+
+    .help-content kbd {
+        background: #1e1e1e;
+        border: 1px solid #3e3e42;
+        border-radius: 3px;
+        padding: 2px 6px;
+        font-family: 'Monaco', monospace;
+        font-size: 11px;
+    }
+
+    .watch-list {
+        padding: 12px;
+    }
+
+    .watch-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+        padding: 4px;
+        background: #1e1e1e;
+        border-radius: 2px;
+    }
+
+    .watch-addr {
+        font-family: 'Monaco', monospace;
+        font-size: 12px;
+        color: #858585;
+        min-width: 50px;
+    }
+
+    .watch-value {
+        font-family: 'Monaco', monospace;
+        font-size: 12px;
+        color: #b5cea8;
+        min-width: 30px;
+    }
+
+    .watch-remove {
+        background: #c5302f;
+        border: none;
+        color: #fff;
+        padding: 2px 6px;
+        font-size: 11px;
+        border-radius: 2px;
+        cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <!-- Registers -->
+      <div class="section">
+        <div class="section-title">Registers</div>
+        <div class="register-display" id="registers">
+          <div class="register-line">
+            <span class="register-label">PC:</span>
+            <span class="register-value editable" id="reg-pc" data-reg="pc" data-maxlen="4" title="Click to edit">0000</span>
+          </div>
+          <div class="register-line">
+            <span class="register-label">A:</span>
+            <span class="register-value editable" id="reg-a" data-reg="a" data-maxlen="2" title="Click to edit">00</span>
+          </div>
+          <div class="register-line">
+            <span class="register-label">X:</span>
+            <span class="register-value editable" id="reg-x" data-reg="x" data-maxlen="2" title="Click to edit">00</span>
+          </div>
+          <div class="register-line">
+            <span class="register-label">Y:</span>
+            <span class="register-value editable" id="reg-y" data-reg="y" data-maxlen="2" title="Click to edit">00</span>
+          </div>
+          <div class="register-line">
+            <span class="register-label">SP:</span>
+            <span class="register-value editable" id="reg-sp" data-reg="sp" data-maxlen="2" title="Click to edit">FF</span>
+          </div>
+          <div class="register-line">
+            <span class="register-label">Flags:</span>
+            <div class="flags" id="flags">
+              <span class="flag inactive" title="Negative">N</span>
+              <span class="flag inactive" title="Overflow">V</span>
+              <span class="flag inactive" title="Break">B</span>
+              <span class="flag inactive" title="Decimal">D</span>
+              <span class="flag inactive" title="Interrupt Disable">I</span>
+              <span class="flag inactive" title="Zero">Z</span>
+              <span class="flag inactive" title="Carry">C</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stack -->
+      <div class="section">
+        <div class="section-title">Stack ($0100-$01FF)</div>
+        <div class="stack-viewer" id="stack-viewer"></div>
+      </div>
+
+      <!-- Breakpoints -->
+      <div class="section">
+        <div class="section-title">Breakpoints</div>
+        <div style="margin-bottom: 8px;">
+          <input type="text" id="breakpoint-input" placeholder="Address (hex)"
+                 style="width: 100px; background: #3c3c3c; border: 1px solid #3e3e42; color: #d4d4d4; padding: 4px 8px; border-radius: 2px; font-family: Monaco, monospace; font-size: 12px;">
+          <button onclick="addBreakpoint()" style="padding: 4px 12px;">Add</button>
+        </div>
+        <div class="breakpoints-list" id="breakpoints-list"></div>
+      </div>
+
+      <!-- Watch List -->
+      <div class="section">
+        <div class="section-title">Watch Memory</div>
+        <div style="margin-bottom: 8px;">
+          <input type="text" id="watch-input" placeholder="Address (hex)"
+                 style="width: 100px; background: #3c3c3c; border: 1px solid #3e3e42; color: #d4d4d4; padding: 4px 8px; border-radius: 2px; font-family: Monaco, monospace; font-size: 12px;">
+          <button onclick="addWatch()" style="padding: 4px 12px;">Add</button>
+        </div>
+        <div class="watch-list" id="watch-list"></div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <button id="btn-step" onclick="step()" title="Step one instruction (F10)">Step</button>
+        <button id="btn-run" onclick="runToggle()" title="Run/Stop (F5)">Run</button>
+        <button class="secondary" onclick="stepOver()" title="Step over subroutine (F11)">Step Over</button>
+        <button class="danger" onclick="resetCPU()" title="Reset CPU">Reset</button>
+
+        <div style="flex: 1;"></div>
+
+        <div class="speed-control">
+          <span class="speed-label">Speed:</span>
+          <input type="range" id="speed-slider" min="1" max="100" value="50" onchange="updateSpeed()">
+          <span class="speed-label" id="speed-display">50%</span>
+        </div>
+
+        <label style="margin-left: 16px;">
+          <input type="checkbox" id="auto-scroll">
+          Auto-scroll
+        </label>
+
+        <button class="secondary" onclick="showHelp()" title="Show keyboard shortcuts">Help</button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('memory')">Memory</div>
+        <div class="tab" onclick="switchTab('disassembly')">Disassembly</div>
+        <div class="tab" onclick="switchTab('display')">Display</div>
+        <div class="tab" onclick="switchTab('console')">Console</div>
+      </div>
+
+      <!-- Tab Contents -->
+      <div class="tab-content active" id="tab-memory">
+        <div class="memory-viewer">
+          <div class="memory-controls">
+            <label>Address:</label>
+            <input type="text" id="mem-addr" value="2000" onchange="updateMemoryView()">
+            <label>Rows:</label>
+            <select id="mem-rows" onchange="updateMemoryView()">
+              <option value="16">16</option>
+              <option value="32" selected>32</option>
+              <option value="64">64</option>
+              <option value="128">128</option>
+            </select>
+            <button class="secondary" onclick="gotoPC()">Go to PC</button>
+            <button class="secondary" onclick="clearMemory()">Clear All</button>
+          </div>
+          <div class="memory-hex" id="memory-hex"></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-disassembly">
+        <div class="disassembly" id="disassembly"></div>
+      </div>
+
+      <div class="tab-content" id="tab-display">
+        <div class="canvas-container">
+          <canvas class="screen" id="screen"></canvas>
+        </div>
+        <div style="padding: 12px;">
+          <label>Palette:</label>
+          <select id="palette-select" onchange="changePalette()" style="background: #3c3c3c; border: 1px solid #3e3e42; color: #d4d4d4; padding: 4px 8px; border-radius: 2px; font-family: inherit; font-size: 12px; margin-left: 8px;">
+            <option value="pal_win" selected>Windows</option>
+            <option value="pal_c64">Commodore 64</option>
+            <option value="pal_c64b">C64 (Blue)</option>
+            <option value="pal_a2e">Apple II</option>
+            <option value="pal_cga">CGA</option>
+            <option value="pal_mono">Monochrome</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-console">
+        <div class="console" id="console"></div>
+      </div>
+
+      <!-- Status Bar -->
+      <div class="status-bar">
+        <div>
+          <span class="status-item">Cycles: <span id="status-cycles">0</span></span>
+          <span class="status-item">Instructions: <span id="status-instructions">0</span></span>
+          <span class="status-item">IPS: <span id="status-ips">0</span></span>
+        </div>
+        <div>
+          <a href="https://github.com/inindev/65c02_emu" target="_blank" style="color: #fff; text-decoration: none;">View on GitHub</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help Overlay -->
+  <div class="help-overlay" id="help-overlay" onclick="hideHelp()">
+    <div class="help-content" onclick="event.stopPropagation()">
+      <h2>W65C02S Emulator Trainer</h2>
+
+      <h3>Keyboard Shortcuts</h3>
+      <p><kbd>F5</kbd> - Run/Stop execution</p>
+      <p><kbd>F10</kbd> - Step one instruction</p>
+      <p><kbd>F11</kbd> - Step over subroutine</p>
+      <p><kbd>Ctrl+R</kbd> - Reset CPU</p>
+      <p><kbd>Ctrl+B</kbd> - Toggle breakpoint at PC</p>
+      <p><kbd>Enter</kbd> - Commit edit (while editing)</p>
+      <p><kbd>Esc</kbd> - Cancel edit / Close dialog</p>
+
+      <h3>Quick Start</h3>
+      <p><strong>1. Edit registers:</strong> Click any register value (PC, A, X, Y, SP) to edit in-place</p>
+      <p><strong>2. Edit memory:</strong> Click any byte in Memory tab, type hex digits - auto-advances!</p>
+      <p><strong>3. Execute:</strong> Use Step (F10) to execute one instruction, or Run (F5) continuously</p>
+
+      <h3>In-Place Editing</h3>
+      <p><strong>Registers:</strong> Click value → type → Enter to save, Esc to cancel</p>
+      <p><strong>Memory:</strong> Click byte → type 2 hex digits (auto-advances) → Enter to commit all, Esc to revert all</p>
+      <p><strong>Navigation:</strong> Tab/Arrow keys move between values while editing</p>
+      <p>Changed memory shows in <span style="background: #4ec9b0; color: #000; padding: 2px 4px;">teal</span></p>
+
+      <h3>Features</h3>
+      <p><strong>Breakpoints:</strong> Click on an address in the disassembly or add manually</p>
+      <p><strong>Memory Watch:</strong> Monitor specific memory addresses in real-time</p>
+      <p><strong>Stack View:</strong> See the current stack contents and stack pointer</p>
+      <p><strong>Auto-scroll:</strong> Automatically follow PC in memory/disassembly views</p>
+
+      <h3>Memory Map</h3>
+      <p><strong>$0000-$00FF:</strong> Zero Page</p>
+      <p><strong>$0100-$01FF:</strong> Stack</p>
+      <p><strong>$0200-$05FF:</strong> Display memory (32x32 pixels)</p>
+      <p><strong>$2000+:</strong> Program area</p>
+
+      <h3>Special Addresses</h3>
+      <p><strong>$00FE:</strong> Random number generator (read)</p>
+      <p><strong>$00FF:</strong> Last keypress (read)</p>
+
+      <button onclick="hideHelp()" style="margin-top: 16px;">Close</button>
+    </div>
+  </div>
+
+  <script src="w65c02s.js"></script>
+  <script src="ram.js"></script>
+  <script src="display.js"></script>
+  <script>
+    // Global state
+    const ram = new RAM();
+    const cpu = new W65C02S(ram);
+    let display;
+    let isRunning = false;
+    let runInterval;
+    let breakpoints = new Set();
+    let watches = new Map();
+    let cycles = 0;
+    let instructions = 0;
+    let lastInstructions = 0;
+    let ipsInterval;
+    let speedMultiplier = 0.5;
+    let memorySnapshot = new Map();
+    let previousMemory = new Map();
+
+    // In-place editing state
+    let currentEdit = null;
+    let currentEditType = null; // 'register' or 'memory'
+    let currentMemoryDigit = 0; // For memory: 0 or 1
+    let editSnapshot = new Map(); // Stores original values before edit session
+    let changedMemoryBytes = new Set(); // Track which bytes have been modified
+
+    // Instruction name lookup (reverse mapping from opcode to mnemonic)
+    const opcodeToName = {};
+
+    // Build opcode lookup table from w65c02s.js opdef
+    if (typeof opdef !== 'undefined') {
+        for (let i = 0; i < opdef.length; i++) {
+            const entry = opdef[i];
+            const name = entry[0];
+            for (let j = 1; j < entry.length; j++) {
+                if (entry[j] !== undefined) {
+                    opcodeToName[entry[j]] = name;
+                }
+            }
+        }
+    }
+
+    // Initialize
+    function init() {
+        setupEventListeners();
+        setupKeyboardShortcuts();
+        initScreen();
+        resetCPU();
+        updateAllViews();
+
+        // Start IPS counter
+        ipsInterval = setInterval(updateIPS, 1000);
+
+        log('W65C02S Emulator initialized', 'info');
+        log('💡 Click any register or memory byte to edit in-place - no dialogs!', 'info');
+        log('Press F5 to run, F10 to step, or click Help for keyboard shortcuts', 'info');
+    }
+
+    function setupEventListeners() {
+        // Random number generator at $fe
+        ram.read_hook(0x00fe, 0x00fe, () => Math.floor(Math.random() * 256));
+
+        // Keypress at $ff
+        document.addEventListener('keypress', (event) => {
+            if (!event.ctrlKey && !event.metaKey && event.target.tagName !== 'INPUT') {
+                ram.write(0xff, event.which);
+            }
+        });
+
+        // Register editing
+        document.querySelectorAll('.register-value.editable').forEach(el => {
+            el.addEventListener('click', () => startRegisterEdit(el));
+        });
+    }
+
+    function setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (event) => {
+            // Handle editing mode first
+            if (currentEdit !== null) {
+                handleEditingKeydown(event);
+                return;
+            }
+
+            // Don't intercept if typing in input field
+            if (event.target.tagName === 'INPUT') return;
+
+            switch(event.key) {
+                case 'F5':
+                    event.preventDefault();
+                    runToggle();
+                    break;
+                case 'F10':
+                    event.preventDefault();
+                    step();
+                    break;
+                case 'F11':
+                    event.preventDefault();
+                    stepOver();
+                    break;
+                case 'Escape':
+                    event.preventDefault();
+                    if (document.getElementById('help-overlay').classList.contains('active')) {
+                        hideHelp();
+                    } else if (isRunning) {
+                        runToggle();
+                    }
+                    break;
+                case 'b':
+                case 'B':
+                    if (event.ctrlKey) {
+                        event.preventDefault();
+                        toggleBreakpointAtPC();
+                    }
+                    break;
+                case 'r':
+                case 'R':
+                    if (event.ctrlKey) {
+                        event.preventDefault();
+                        resetCPU();
+                    }
+                    break;
+            }
+        });
+    }
+
+    function initScreen() {
+        const screen = document.getElementById('screen');
+        screen.width = 12 * 32;
+        screen.height = 9 * 32;
+
+        display = new Display(ram);
+        display.set_resolution(screen, 32, 32, 0x0200);
+        display.set_palette("pal_win");
+    }
+
+    // Execution control
+    function step() {
+        const pc = cpu.register.pc;
+
+        // Take snapshot of memory before step
+        previousMemory.clear();
+        for (let i = 0; i < 0x10000; i++) {
+            previousMemory.set(i, ram.read(i));
+        }
+
+        const cyclesUsed = cpu.step();
+        if (cyclesUsed < 1) {
+            log(`Step failed: ${cyclesUsed}`, 'error');
+            return;
+        }
+
+        cycles += cyclesUsed;
+        instructions++;
+
+        updateAllViews();
+
+        // Check for breakpoints
+        if (breakpoints.has(cpu.register.pc)) {
+            log(`Breakpoint hit at $${cpu.register.pc.toString(16).padStart(4, '0')}`, 'warning');
+            if (isRunning) {
+                runToggle();
+            }
+        }
+    }
+
+    function stepOver() {
+        const pc = cpu.register.pc;
+        const opcode = ram.read(pc);
+
+        // Check if it's JSR (0x20)
+        if (opcode === 0x20) {
+            // Set temporary breakpoint at next instruction (PC + 3)
+            const returnAddr = pc + 3;
+            const tempBreakpoint = true;
+
+            // Run until we hit the return address
+            let safetyCounter = 100000;
+            while (cpu.register.pc !== returnAddr && safetyCounter-- > 0) {
+                const cyclesUsed = cpu.step();
+                if (cyclesUsed < 1) break;
+                cycles += cyclesUsed;
+                instructions++;
+
+                if (breakpoints.has(cpu.register.pc)) {
+                    log(`Breakpoint hit at $${cpu.register.pc.toString(16).padStart(4, '0')}`, 'warning');
+                    break;
+                }
+            }
+
+            if (safetyCounter <= 0) {
+                log('Step over timeout (possible infinite loop)', 'error');
+            }
+        } else {
+            // Not a JSR, just step normally
+            step();
+        }
+
+        updateAllViews();
+    }
+
+    function runToggle() {
+        isRunning = !isRunning;
+        const btn = document.getElementById('btn-run');
+
+        if (isRunning) {
+            btn.textContent = 'Stop';
+            btn.style.background = '#c5302f';
+            runInterval = setInterval(runStep, 16); // ~60fps
+            log('Execution started', 'info');
+        } else {
+            btn.textContent = 'Run';
+            btn.style.background = '#0e639c';
+            clearInterval(runInterval);
+            updateAllViews();
+            log('Execution stopped', 'info');
+        }
+    }
+
+    function runStep() {
+        const instructionsPerFrame = Math.max(1, Math.floor(2048 * speedMultiplier));
+
+        for (let i = 0; i < instructionsPerFrame; i++) {
+            const cyclesUsed = cpu.step();
+            if (cyclesUsed < 1) {
+                log(`Execution error: ${cyclesUsed}`, 'error');
+                runToggle();
+                return;
+            }
+
+            cycles += cyclesUsed;
+            instructions++;
+
+            // Check for breakpoints
+            if (breakpoints.has(cpu.register.pc)) {
+                log(`Breakpoint hit at $${cpu.register.pc.toString(16).padStart(4, '0')}`, 'warning');
+                runToggle();
+                updateAllViews();
+                return;
+            }
+        }
+
+        // Update views less frequently when running
+        if (instructions % 100 === 0) {
+            updateRegisters();
+            updateStack();
+            updateWatches();
+            document.getElementById('status-cycles').textContent = cycles;
+            document.getElementById('status-instructions').textContent = instructions;
+        }
+    }
+
+    function resetCPU() {
+        if (isRunning) {
+            runToggle();
+        }
+
+        cpu.reset();
+        display.reset();
+        cpu.register.pc = 0x2000;
+        cycles = 0;
+        instructions = 0;
+        updateAllViews();
+        log('CPU reset', 'info');
+    }
+
+    // ===== IN-PLACE EDITING FUNCTIONS =====
+
+    function startRegisterEdit(element) {
+        // Ignore if already editing this element
+        if (currentEdit === element && currentEditType === 'register') {
+            return; // Let browser handle cursor placement naturally
+        }
+
+        // Finish any current edit first
+        if (currentEdit) finishEdit(true);
+
+        currentEdit = element;
+        currentEditType = 'register';
+
+        // Store original value
+        element.dataset.original = element.textContent.trim();
+
+        // Enable editing
+        element.contentEditable = 'true';
+        element.classList.add('editing');
+
+        // Select all text
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        element.focus();
+    }
+
+    function startMemoryEdit(addr) {
+        // If starting new edit session (no session active), save snapshot
+        if (currentEditType !== 'memory') {
+            editSnapshot.clear();
+            for (let i = 0; i < 0x10000; i++) {
+                editSnapshot.set(i, ram.read(i));
+            }
+        }
+
+        // Finish previous byte if editing different one
+        if (currentEdit !== null && currentEditType === 'memory' && currentEdit !== addr) {
+            finishMemoryByte(currentEdit);
+        }
+
+        currentEdit = addr;
+        currentEditType = 'memory';
+        currentMemoryDigit = 0;
+
+        const element = document.querySelector(`[data-addr="${addr}"]`);
+        if (!element) return;
+
+        element.classList.add('editing');
+        element.contentEditable = 'true';
+        element.focus();
+
+        // Select all
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+
+    function finishMemoryByte(addr) {
+        const element = document.querySelector(`[data-addr="${addr}"]`);
+        if (!element) return;
+
+        element.classList.remove('editing');
+        element.contentEditable = 'false';
+        window.getSelection().removeAllRanges();
+    }
+
+    function finishEdit(save) {
+        if (!currentEdit) return;
+
+        if (currentEditType === 'register') {
+            finishRegisterEdit(save);
+        } else if (currentEditType === 'memory') {
+            finishMemoryEdit(save);
+        }
+    }
+
+    function finishRegisterEdit(save) {
+        const element = currentEdit;
+        let value = element.textContent.trim().toUpperCase();
+        const maxLen = parseInt(element.dataset.maxlen);
+        const original = element.dataset.original;
+        const regName = element.dataset.reg;
+
+        if (save) {
+            // Validate hex
+            if (!/^[0-9A-F]+$/.test(value)) {
+                value = original;
+                log('Invalid hex value - reverted', 'error');
+            } else {
+                // Pad with zeros
+                value = value.padStart(maxLen, '0').substring(0, maxLen);
+
+                // Update CPU register
+                const numValue = parseInt(value, 16);
+                if (regName === 'pc') cpu.register.pc = numValue;
+                else if (regName === 'a') cpu.register.a = numValue;
+                else if (regName === 'x') cpu.register.x = numValue;
+                else if (regName === 'y') cpu.register.y = numValue;
+                else if (regName === 'sp') cpu.register.sp = numValue;
+
+                if (value !== original) {
+                    log(`${regName.toUpperCase()} = $${value}`, 'info');
+                    updateAllViews();
+                }
+            }
+        } else {
+            value = original;
+        }
+
+        element.textContent = value;
+        element.contentEditable = 'false';
+        element.classList.remove('editing');
+        currentEdit = null;
+        currentEditType = null;
+        window.getSelection().removeAllRanges();
+    }
+
+    function finishMemoryEdit(save) {
+        if (currentEdit !== null) {
+            finishMemoryByte(currentEdit);
+        }
+
+        if (save) {
+            // Commit the edit session - clear highlights since changes are committed
+            const count = changedMemoryBytes.size;
+            editSnapshot.clear();
+            changedMemoryBytes.clear(); // Clear the teal highlighting
+            currentEdit = null;
+            currentEditType = null;
+            log(`Memory edit committed - ${count} byte(s) modified`, 'info');
+            updateMemoryView(); // Refresh to remove teal color
+        } else {
+            // Revert all changes
+            for (const [addr, value] of editSnapshot) {
+                ram.write(addr, value);
+            }
+            changedMemoryBytes.clear();
+            editSnapshot.clear();
+            currentEdit = null;
+            currentEditType = null;
+            log('Memory edit cancelled - all changes reverted', 'warning');
+            updateMemoryView();
+        }
+    }
+
+    function updateMemoryByte(addr, hexChar) {
+        if (addr === null || addr < 0 || addr >= 0x10000) return;
+
+        const element = document.querySelector(`[data-addr="${addr}"]`);
+        if (!element) return;
+
+        let currentValue = ram.read(addr);
+        let displayValue = currentValue.toString(16).padStart(2, '0').toUpperCase();
+
+        if (currentMemoryDigit === 0) {
+            // First digit
+            displayValue = hexChar + displayValue[1];
+            currentMemoryDigit = 1;
+        } else {
+            // Second digit
+            displayValue = displayValue[0] + hexChar;
+            currentMemoryDigit = 0;
+        }
+
+        // Update memory
+        const newValue = parseInt(displayValue, 16);
+        ram.write(addr, newValue);
+        changedMemoryBytes.add(addr);
+
+        // Update display
+        element.textContent = displayValue;
+
+        // Force teal class update immediately
+        if (!element.classList.contains('changed') && !element.classList.contains('pc') && !element.classList.contains('breakpoint')) {
+            element.classList.add('changed');
+        }
+
+        // Auto-advance after second digit
+        if (currentMemoryDigit === 0) {
+            setTimeout(() => advanceMemoryByte(), 50);
+        } else {
+            // Position cursor after first digit
+            const range = document.createRange();
+            const sel = window.getSelection();
+            if (element.firstChild) {
+                range.setStart(element.firstChild, 1);
+                range.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        }
+
+        // Update ASCII in real-time
+        updateMemoryRowAscii(addr);
+    }
+
+    function updateMemoryRowAscii(addr) {
+        // Find the row containing this address
+        const element = document.querySelector(`[data-addr="${addr}"]`);
+        if (!element) return;
+
+        const rowElement = element.closest('.memory-row');
+        if (!rowElement) return;
+
+        const asciiElement = rowElement.querySelector('.memory-ascii');
+        if (!asciiElement) return;
+
+        // Get the starting address of this row from the addr span
+        const addrSpan = rowElement.querySelector('.memory-addr');
+        const rowStartAddr = parseInt(addrSpan.textContent.replace(':', ''), 16);
+
+        // Rebuild ASCII for this row
+        let ascii = '';
+        for (let i = 0; i < 16; i++) {
+            const byteAddr = rowStartAddr + i;
+            const value = ram.read(byteAddr);
+            ascii += (value >= 0x20 && value <= 0x7e) ? String.fromCharCode(value) : '.';
+        }
+        asciiElement.textContent = ascii;
+    }
+
+    function advanceMemoryByte() {
+        if (currentEdit === null) return;
+
+        finishMemoryByte(currentEdit);
+
+        const nextAddr = currentEdit + 1;
+        if (nextAddr < 0x10000) {
+            // Check if next byte is visible
+            const nextElement = document.querySelector(`[data-addr="${nextAddr}"]`);
+            if (nextElement) {
+                startMemoryEdit(nextAddr);
+            } else {
+                // Scroll to next page
+                currentEdit = null;
+                currentEditType = null;
+                log('End of visible memory - edit session continues', 'info');
+            }
+        } else {
+            finishMemoryEdit(true);
+            log('End of memory reached', 'warning');
+        }
+    }
+
+    function navigateMemoryByte(direction) {
+        if (currentEdit === null || currentEditType !== 'memory') return;
+
+        finishMemoryByte(currentEdit);
+
+        let nextAddr = currentEdit;
+
+        switch(direction) {
+            case 'left':
+                nextAddr = Math.max(0, currentEdit - 1);
+                break;
+            case 'right':
+                nextAddr = Math.min(0xffff, currentEdit + 1);
+                break;
+            case 'up':
+                nextAddr = Math.max(0, currentEdit - 16);
+                break;
+            case 'down':
+                nextAddr = Math.min(0xffff, currentEdit + 16);
+                break;
+        }
+
+        const nextElement = document.querySelector(`[data-addr="${nextAddr}"]`);
+        if (nextElement) {
+            startMemoryEdit(nextAddr);
+        } else {
+            currentEdit = null;
+            currentEditType = null;
+        }
+    }
+
+    function handleEditingKeydown(event) {
+        if (currentEditType === 'register') {
+            handleRegisterEditingKeydown(event);
+        } else if (currentEditType === 'memory') {
+            handleMemoryEditingKeydown(event);
+        }
+    }
+
+    function handleRegisterEditingKeydown(event) {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            finishEdit(false);
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            finishEdit(true);
+        } else if (event.key === 'Tab') {
+            event.preventDefault();
+            finishEdit(true);
+
+            // Find next editable register
+            const editables = Array.from(document.querySelectorAll('.register-value.editable'));
+            const currentIndex = editables.indexOf(currentEdit);
+            const nextIndex = (currentIndex + (event.shiftKey ? -1 : 1) + editables.length) % editables.length;
+            startRegisterEdit(editables[nextIndex]);
+        } else if (/^[0-9a-fA-F]$/.test(event.key)) {
+            // Allow hex input
+            return;
+        } else if (event.key === 'Backspace' || event.key === 'Delete') {
+            // Allow deletion
+            return;
+        } else if (event.key.length === 1) {
+            // Block non-hex characters
+            event.preventDefault();
+        }
+    }
+
+    function handleMemoryEditingKeydown(event) {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            finishMemoryEdit(false);
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            finishMemoryEdit(true);
+        } else if (event.key === 'Tab') {
+            event.preventDefault();
+            navigateMemoryByte(event.shiftKey ? 'left' : 'right');
+        } else if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            navigateMemoryByte('left');
+        } else if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            navigateMemoryByte('right');
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            navigateMemoryByte('up');
+        } else if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            navigateMemoryByte('down');
+        } else if (/^[0-9a-fA-F]$/.test(event.key)) {
+            event.preventDefault();
+            updateMemoryByte(currentEdit, event.key.toUpperCase());
+        }
+    }
+
+    // Click outside to finish editing
+    document.addEventListener('click', (e) => {
+        // If editing memory and clicking a button, commit the edit first
+        if (currentEdit && currentEditType === 'memory' &&
+            (e.target.tagName === 'BUTTON' || e.target.closest('button'))) {
+            finishMemoryEdit(true);
+            return;
+        }
+
+        // If editing register and clicking a button, commit the edit first
+        if (currentEdit && currentEditType === 'register' &&
+            (e.target.tagName === 'BUTTON' || e.target.closest('button'))) {
+            finishEdit(true);
+            return;
+        }
+
+        // Don't finish if clicking on input/select controls (but not buttons)
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
+            return;
+        }
+
+        // Click outside to commit
+        if (currentEdit && currentEditType === 'register' &&
+            !e.target.classList.contains('register-value')) {
+            finishEdit(true);
+        } else if (currentEdit && currentEditType === 'memory' &&
+                   !e.target.classList.contains('memory-byte')) {
+            finishMemoryEdit(true);
+        }
+    });
+
+    // Real-time input handling for character limits and validation
+    document.addEventListener('input', (e) => {
+        if (!currentEdit) return;
+
+        if (currentEditType === 'register') {
+            const element = currentEdit;
+            const maxLen = parseInt(element.dataset.maxlen);
+            let value = element.textContent.toUpperCase();
+
+            // Get current cursor position BEFORE we modify anything
+            const sel = window.getSelection();
+            let cursorPos = sel.anchorOffset;
+
+            // Remove non-hex characters
+            value = value.replace(/[^0-9A-F]/g, '');
+
+            // Trim excess characters from the RIGHT (end)
+            if (value.length > maxLen) {
+                const trimmed = value.substring(0, maxLen);
+                element.textContent = trimmed;
+
+                // Keep cursor where it was (don't move it to end)
+                // Only adjust if cursor was past the new end
+                if (cursorPos > trimmed.length) {
+                    cursorPos = trimmed.length;
+                }
+
+                const range = document.createRange();
+                const newSel = window.getSelection();
+                if (element.firstChild) {
+                    range.setStart(element.firstChild, cursorPos);
+                    range.collapse(true);
+                    newSel.removeAllRanges();
+                    newSel.addRange(range);
+                }
+            } else if (value !== element.textContent) {
+                // Just update to uppercase
+                element.textContent = value;
+
+                // Restore cursor position exactly where it was
+                const range = document.createRange();
+                const newSel = window.getSelection();
+                if (element.firstChild) {
+                    range.setStart(element.firstChild, Math.min(cursorPos, value.length));
+                    range.collapse(true);
+                    newSel.removeAllRanges();
+                    newSel.addRange(range);
+                }
+            }
+        }
+    });
+
+    // ===== END IN-PLACE EDITING FUNCTIONS =====
+
+    function updateSpeed() {
+        const slider = document.getElementById('speed-slider');
+        speedMultiplier = slider.value / 100;
+        document.getElementById('speed-display').textContent = slider.value + '%';
+    }
+
+    function updateIPS() {
+        const ips = instructions - lastInstructions;
+        lastInstructions = instructions;
+        document.getElementById('status-ips').textContent = ips.toLocaleString();
+    }
+
+    // UI Updates
+    function updateAllViews() {
+        updateRegisters();
+        updateStack();
+        updateMemoryView();
+        updateDisassembly();
+        updateBreakpointsList();
+        updateWatches();
+        document.getElementById('status-cycles').textContent = cycles;
+        document.getElementById('status-instructions').textContent = instructions;
+    }
+
+    function updateRegisters() {
+        const reg = cpu.register;
+        document.getElementById('reg-pc').textContent = reg.pc.toString(16).padStart(4, '0').toUpperCase();
+        document.getElementById('reg-a').textContent = reg.a.toString(16).padStart(2, '0').toUpperCase();
+        document.getElementById('reg-x').textContent = reg.x.toString(16).padStart(2, '0').toUpperCase();
+        document.getElementById('reg-y').textContent = reg.y.toString(16).padStart(2, '0').toUpperCase();
+        document.getElementById('reg-sp').textContent = reg.sp.toString(16).padStart(2, '0').toUpperCase();
+
+        // Update flags
+        const flags = document.getElementById('flags').children;
+        flags[0].className = `flag ${reg.flag.n ? 'active' : 'inactive'}`;
+        flags[1].className = `flag ${reg.flag.v ? 'active' : 'inactive'}`;
+        flags[2].className = `flag ${reg.flag.b ? 'active' : 'inactive'}`;
+        flags[3].className = `flag ${reg.flag.d ? 'active' : 'inactive'}`;
+        flags[4].className = `flag ${reg.flag.i ? 'active' : 'inactive'}`;
+        flags[5].className = `flag ${reg.flag.z ? 'active' : 'inactive'}`;
+        flags[6].className = `flag ${reg.flag.c ? 'active' : 'inactive'}`;
+    }
+
+    function updateStack() {
+        const sp = cpu.register.sp;
+        const viewer = document.getElementById('stack-viewer');
+        let html = '';
+
+        // Show stack from SP to top (0x01FF)
+        for (let i = sp + 1; i <= 0xff && i <= sp + 16; i++) {
+            const addr = 0x0100 + i;
+            const value = ram.read(addr);
+            const isSP = (i === sp + 1);
+            html += `<div class="stack-item ${isSP ? 'sp' : ''}">`;
+            html += `$${addr.toString(16).padStart(4, '0')}: `;
+            html += `$${value.toString(16).padStart(2, '0')}`;
+            if (isSP) html += ` ← SP`;
+            html += `</div>`;
+        }
+
+        if (html === '') {
+            html = '<div style="color: #858585; font-size: 12px;">Stack empty</div>';
+        }
+
+        viewer.innerHTML = html;
+    }
+
+    function updateMemoryView() {
+        const addrInput = document.getElementById('mem-addr').value;
+        const rows = parseInt(document.getElementById('mem-rows').value);
+        const startAddr = parseInt(addrInput, 16) || 0;
+
+        const viewer = document.getElementById('memory-hex');
+        const pc = cpu.register.pc;
+        let html = '';
+
+        for (let row = 0; row < rows; row++) {
+            const addr = (startAddr + row * 16) & 0xffff;
+            html += '<div class="memory-row">';
+            html += `<span class="memory-addr">${addr.toString(16).padStart(4, '0')}:</span>`;
+            html += '<div class="memory-bytes">';
+
+            let ascii = '';
+            for (let col = 0; col < 16; col++) {
+                const byteAddr = (addr + col) & 0xffff;
+                const value = ram.read(byteAddr);
+                const prevValue = previousMemory.get(byteAddr);
+                const changed = prevValue !== undefined && prevValue !== value;
+                const isChangedByte = changedMemoryBytes.has(byteAddr);
+
+                let classes = 'memory-byte';
+                if (byteAddr === pc) classes += ' pc';
+                else if (breakpoints.has(byteAddr)) classes += ' breakpoint';
+                else if (changed || isChangedByte) classes += ' changed';
+
+                html += `<span class="${classes}" data-addr="${byteAddr}" onclick="startMemoryEdit(${byteAddr})" title="$${byteAddr.toString(16).padStart(4, '0')}">`;
+                html += value.toString(16).padStart(2, '0').toUpperCase();
+                html += '</span>';
+
+                // ASCII representation
+                ascii += (value >= 0x20 && value <= 0x7e) ? String.fromCharCode(value) : '.';
+            }
+
+            html += '</div>';
+            html += `<span class="memory-ascii">${ascii}</span>`;
+            html += '</div>';
+        }
+
+        viewer.innerHTML = html;
+
+        // Auto-scroll if enabled
+        if (document.getElementById('auto-scroll').checked) {
+            const pcRow = Math.floor((pc - startAddr) / 16);
+            if (pcRow < 0 || pcRow >= rows) {
+                gotoPC();
+            }
+        }
+    }
+
+    function updateDisassembly() {
+        const viewer = document.getElementById('disassembly');
+        const pc = cpu.register.pc;
+        let html = '';
+        let addr = Math.max(0, pc - 10 * 3); // Show ~10 instructions before PC
+
+        for (let i = 0; i < 40 && addr < 0x10000; i++) {
+            const opcode = ram.read(addr);
+            const name = opcodeToName[opcode] || '???';
+            const isCurrent = (addr === pc);
+            const hasBreakpoint = breakpoints.has(addr);
+
+            let classes = 'disasm-line';
+            if (isCurrent) classes += ' current';
+            if (hasBreakpoint) classes += ' breakpoint';
+
+            html += `<div class="${classes}" onclick="toggleBreakpoint(${addr})" title="Click to toggle breakpoint">`;
+            html += `<span class="disasm-addr">${addr.toString(16).padStart(4, '0')}:</span>`;
+
+            // Get instruction bytes
+            const bytes = getInstructionBytes(addr);
+            const bytesStr = bytes.map(b => b.toString(16).padStart(2, '0')).join(' ');
+            html += `<span class="disasm-bytes">${bytesStr.padEnd(8)}</span>`;
+
+            // Get operand
+            const operand = getOperandString(addr, opcode, bytes);
+            html += `<span class="disasm-instruction">${name.toUpperCase()}</span>`;
+            html += `<span class="disasm-operand">${operand}</span>`;
+
+            html += '</div>';
+
+            addr += bytes.length;
+        }
+
+        viewer.innerHTML = html;
+
+        // Auto-scroll to current instruction
+        if (document.getElementById('auto-scroll').checked) {
+            const currentLine = viewer.querySelector('.disasm-line.current');
+            if (currentLine) {
+                currentLine.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
+        }
+    }
+
+    function getInstructionBytes(addr) {
+        const opcode = ram.read(addr);
+        const bytes = [opcode];
+
+        // Determine instruction length (simplified - would need full opcode table)
+        // For now, use a simple heuristic
+        const b1 = ram.read((addr + 1) & 0xffff);
+        const b2 = ram.read((addr + 2) & 0xffff);
+
+        // Single byte instructions
+        if ([0x00, 0x08, 0x18, 0x28, 0x38, 0x40, 0x48, 0x58, 0x60, 0x68, 0x78,
+             0x88, 0x8a, 0x98, 0x9a, 0xa8, 0xaa, 0xb8, 0xba, 0xc8, 0xca, 0xd8,
+             0xe8, 0xea, 0xf8, 0x1a, 0x3a, 0x5a, 0x7a, 0xda, 0xfa].includes(opcode)) {
+            return bytes;
+        }
+
+        // Three byte instructions (mostly abs, abs_x, abs_y)
+        if ((opcode & 0x0f) === 0x0d || (opcode & 0x0f) === 0x0e || (opcode & 0x0f) === 0x0c ||
+            opcode === 0x20 || opcode === 0x4c || opcode === 0x6c) {
+            bytes.push(b1, b2);
+        } else {
+            // Two byte instructions
+            bytes.push(b1);
+        }
+
+        return bytes;
+    }
+
+    function getOperandString(addr, opcode, bytes) {
+        if (bytes.length === 1) return '';
+
+        const name = opcodeToName[opcode];
+        if (!name) return bytes.slice(1).map(b => '$' + b.toString(16).padStart(2, '0')).join(', ');
+
+        if (bytes.length === 2) {
+            const operand = bytes[1];
+
+            // Immediate
+            if ((opcode & 0x0f) === 0x09) {
+                return `#$${operand.toString(16).padStart(2, '0')}`;
+            }
+            // Zero page
+            else if ((opcode & 0x0f) === 0x05 || (opcode & 0x0f) === 0x06 || (opcode & 0x0f) === 0x04) {
+                return `$${operand.toString(16).padStart(2, '0')}`;
+            }
+            // Relative (branch)
+            else if ((opcode & 0x1f) === 0x10) {
+                const offset = operand > 127 ? operand - 256 : operand;
+                const target = (addr + 2 + offset) & 0xffff;
+                return `$${target.toString(16).padStart(4, '0')}`;
+            }
+
+            return `$${operand.toString(16).padStart(2, '0')}`;
+        }
+
+        if (bytes.length === 3) {
+            const operand = bytes[1] | (bytes[2] << 8);
+
+            // Absolute
+            if ((opcode & 0x0f) === 0x0d || (opcode & 0x0f) === 0x0e || (opcode & 0x0f) === 0x0c ||
+                opcode === 0x20 || opcode === 0x4c || opcode === 0x6c) {
+                return `$${operand.toString(16).padStart(4, '0')}`;
+            }
+
+            return `$${operand.toString(16).padStart(4, '0')}`;
+        }
+
+        return '';
+    }
+
+    function gotoPC() {
+        const pc = cpu.register.pc;
+        document.getElementById('mem-addr').value = (pc & 0xfff0).toString(16).padStart(4, '0');
+        updateMemoryView();
+    }
+
+    function clearMemory() {
+        if (confirm('Clear all memory (0000-FFFF)? This will reset all memory to 00.')) {
+            ram.reset();
+            changedMemoryBytes.clear();
+            updateAllViews();
+            log('Memory cleared', 'info');
+        }
+    }
+
+    // Breakpoints
+    function addBreakpoint() {
+        const input = document.getElementById('breakpoint-input');
+        const addr = parseInt(input.value, 16);
+
+        if (!isNaN(addr) && addr >= 0 && addr <= 0xffff) {
+            breakpoints.add(addr);
+            input.value = '';
+            updateBreakpointsList();
+            updateDisassembly();
+            log(`Breakpoint added at $${addr.toString(16).padStart(4, '0')}`, 'info');
+        } else {
+            log('Invalid address', 'error');
+        }
+    }
+
+    function removeBreakpoint(addr) {
+        breakpoints.delete(addr);
+        updateBreakpointsList();
+        updateDisassembly();
+        log(`Breakpoint removed at $${addr.toString(16).padStart(4, '0')}`, 'info');
+    }
+
+    function toggleBreakpoint(addr) {
+        if (breakpoints.has(addr)) {
+            removeBreakpoint(addr);
+        } else {
+            breakpoints.add(addr);
+            updateBreakpointsList();
+            updateDisassembly();
+            log(`Breakpoint added at $${addr.toString(16).padStart(4, '0')}`, 'info');
+        }
+    }
+
+    function toggleBreakpointAtPC() {
+        toggleBreakpoint(cpu.register.pc);
+    }
+
+    function updateBreakpointsList() {
+        const list = document.getElementById('breakpoints-list');
+
+        if (breakpoints.size === 0) {
+            list.innerHTML = '<div style="color: #858585; font-size: 12px;">No breakpoints</div>';
+            return;
+        }
+
+        let html = '';
+        for (const addr of Array.from(breakpoints).sort((a, b) => a - b)) {
+            html += '<div class="breakpoint-item">';
+            html += `<span class="breakpoint-addr">$${addr.toString(16).padStart(4, '0')}</span>`;
+            html += `<button class="breakpoint-remove" onclick="removeBreakpoint(${addr})">Remove</button>`;
+            html += '</div>';
+        }
+
+        list.innerHTML = html;
+    }
+
+    // Watch list
+    function addWatch() {
+        const input = document.getElementById('watch-input');
+        const addr = parseInt(input.value, 16);
+
+        if (!isNaN(addr) && addr >= 0 && addr <= 0xffff) {
+            watches.set(addr, ram.read(addr));
+            input.value = '';
+            updateWatches();
+            log(`Watch added for $${addr.toString(16).padStart(4, '0')}`, 'info');
+        } else {
+            log('Invalid address', 'error');
+        }
+    }
+
+    function removeWatch(addr) {
+        watches.delete(addr);
+        updateWatches();
+        log(`Watch removed for $${addr.toString(16).padStart(4, '0')}`, 'info');
+    }
+
+    function updateWatches() {
+        const list = document.getElementById('watch-list');
+
+        if (watches.size === 0) {
+            list.innerHTML = '<div style="color: #858585; font-size: 12px;">No watches</div>';
+            return;
+        }
+
+        let html = '';
+        for (const [addr, oldValue] of watches) {
+            const value = ram.read(addr);
+            watches.set(addr, value); // Update stored value
+
+            html += '<div class="watch-item">';
+            html += `<span class="watch-addr">$${addr.toString(16).padStart(4, '0')}:</span>`;
+            html += `<span class="watch-value">$${value.toString(16).padStart(2, '0')}</span>`;
+            html += `<button class="watch-remove" onclick="removeWatch(${addr})">✕</button>`;
+            html += '</div>';
+        }
+
+        list.innerHTML = html;
+    }
+
+    // Tab switching
+    function switchTab(tabName) {
+        // Update tab buttons
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach(tab => tab.classList.remove('active'));
+        event.target.classList.add('active');
+
+        // Update tab contents
+        const contents = document.querySelectorAll('.tab-content');
+        contents.forEach(content => content.classList.remove('active'));
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+
+        // Update view if necessary
+        if (tabName === 'memory') updateMemoryView();
+        if (tabName === 'disassembly') updateDisassembly();
+    }
+
+    // Display palette
+    function changePalette() {
+        const select = document.getElementById('palette-select');
+        display.set_palette(select.value);
+    }
+
+    // Console logging
+    function log(message, type = 'info') {
+        const console = document.getElementById('console');
+        const line = document.createElement('div');
+        line.className = `console-line ${type}`;
+        const timestamp = new Date().toLocaleTimeString();
+        line.textContent = `[${timestamp}] ${message}`;
+        console.appendChild(line);
+        console.scrollTop = console.scrollHeight;
+
+        // Keep only last 100 messages
+        while (console.children.length > 100) {
+            console.removeChild(console.firstChild);
+        }
+    }
+
+    // Help dialog
+    function showHelp() {
+        document.getElementById('help-overlay').classList.add('active');
+    }
+
+    function hideHelp() {
+        document.getElementById('help-overlay').classList.remove('active');
+    }
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+  </script>
+</body>
+</html>
