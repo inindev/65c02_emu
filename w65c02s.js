@@ -267,7 +267,7 @@ class W65C02S
 
         this.reg.a = res; // n & z tests are automatic
         this.reg.flag.test_c(res);
-        return memfn.cycles;
+        return memfn.cycles + memfn.page_cross_penalty;
     }
 
     //                                            n v b d i z c
@@ -275,7 +275,7 @@ class W65C02S
     //
     and(memfn) {
         this.reg.a &= memfn.read(); // n & z tests are automatic
-        return memfn.cycles;
+        return memfn.cycles + memfn.page_cross_penalty;
     }
 
     //                                            n v b d i z c
@@ -299,7 +299,7 @@ class W65C02S
         const val = memfn.read();
         if(!((val >> b) & 0x01)) {
             this.reg.pc = memfn.addr();
-            return memfn.cycles + memfn.branch_extra_cycles;
+            return memfn.cycles + memfn.branch_extra_cycles + memfn.branch_page_cross_penalty;
         }
         return memfn.cycles;
     }
@@ -311,7 +311,7 @@ class W65C02S
         const val = memfn.read();
         if((val >> b) & 0x01) {
             this.reg.pc = memfn.addr();
-            return memfn.cycles + memfn.branch_extra_cycles;
+            return memfn.cycles + memfn.branch_extra_cycles + memfn.branch_page_cross_penalty;
         }
         return memfn.cycles;
     }
@@ -322,7 +322,7 @@ class W65C02S
     bcc(memfn) {
         if(!this.reg.flag.c) {
             this.reg.pc = memfn.addr();
-            return memfn.cycles + memfn.branch_extra_cycles;
+            return memfn.cycles + memfn.branch_extra_cycles + memfn.branch_page_cross_penalty;
         }
         return memfn.cycles;
     }
@@ -333,7 +333,7 @@ class W65C02S
     bcs(memfn) {
         if(this.reg.flag.c) {
             this.reg.pc = memfn.addr();
-            return memfn.cycles + memfn.branch_extra_cycles;
+            return memfn.cycles + memfn.branch_extra_cycles + memfn.branch_page_cross_penalty;
         }
         return memfn.cycles;
     }
@@ -344,7 +344,7 @@ class W65C02S
     beq(memfn) {
         if(this.reg.flag.z) {
             this.reg.pc = memfn.addr();
-            return memfn.cycles + memfn.branch_extra_cycles;
+            return memfn.cycles + memfn.branch_extra_cycles + memfn.branch_page_cross_penalty;
         }
         return memfn.cycles;
     }
@@ -366,7 +366,7 @@ class W65C02S
             this.reg.flag.v = (val & 0x40);
         }
 
-        return memfn.cycles;
+        return memfn.cycles + memfn.page_cross_penalty;
     }
 
     //                                            n v b d i z c
@@ -375,7 +375,7 @@ class W65C02S
     bmi(memfn) {
         if(this.reg.flag.n) {
             this.reg.pc = memfn.addr();
-            return memfn.cycles + memfn.branch_extra_cycles;
+            return memfn.cycles + memfn.branch_extra_cycles + memfn.branch_page_cross_penalty;
         }
         return memfn.cycles;
     }
@@ -386,7 +386,7 @@ class W65C02S
     bne(memfn) {
         if(!this.reg.flag.z) {
             this.reg.pc = memfn.addr();
-            return memfn.cycles + memfn.branch_extra_cycles;
+            return memfn.cycles + memfn.branch_extra_cycles + memfn.branch_page_cross_penalty;
         }
         return memfn.cycles;
     }
@@ -397,7 +397,7 @@ class W65C02S
     bpl(memfn) {
         if(!this.reg.flag.n) {
             this.reg.pc = memfn.addr();
-            return memfn.cycles + memfn.branch_extra_cycles;
+            return memfn.cycles + memfn.branch_extra_cycles + memfn.branch_page_cross_penalty;
         }
         return memfn.cycles;
     }
@@ -407,7 +407,7 @@ class W65C02S
     //
     bra(memfn) {
         this.reg.pc = memfn.addr();
-        return memfn.cycles + memfn.branch_extra_cycles;
+        return memfn.cycles + memfn.branch_extra_cycles + memfn.branch_page_cross_penalty;
     }
 
     //                                            n v b d i z c
@@ -420,7 +420,7 @@ class W65C02S
         this.reg.flag.d = false;
         this.reg.flag.i = true;
         this.reg.pc = this.ram.read_word(0xfffe);    // jump to irq vector
-        return memfn.cycles;
+        return 7;
     }
 
     //                                            n v b d i z c
@@ -429,7 +429,7 @@ class W65C02S
     bvc(memfn) {
         if(!this.reg.flag.v) {
             this.reg.pc = memfn.addr();
-            return memfn.cycles + memfn.branch_extra_cycles;
+            return memfn.cycles + memfn.branch_extra_cycles + memfn.branch_page_cross_penalty;
         }
         return memfn.cycles;
     }
@@ -440,7 +440,7 @@ class W65C02S
     bvs(memfn) {
         if(this.reg.flag.v) {
             this.reg.pc = memfn.addr();
-            return memfn.cycles + memfn.branch_extra_cycles;
+            return memfn.cycles + memfn.branch_extra_cycles + memfn.branch_page_cross_penalty;
         }
         return memfn.cycles;
     }
@@ -488,7 +488,7 @@ class W65C02S
         this.reg.flag.test_n(res);
         this.reg.flag.test_z(res);
         this.reg.flag.test_c(res);
-        return memfn.cycles;
+        return memfn.cycles + memfn.page_cross_penalty;
     }
 
     //                                            n v b d i z c
@@ -550,7 +550,7 @@ class W65C02S
     //
     eor(memfn) {
         this.reg.a ^= memfn.read(); // n & z tests are automatic
-        return memfn.cycles;
+        return memfn.cycles + memfn.page_cross_penalty;
     }
 
     //                                            n v b d i z c
@@ -584,9 +584,10 @@ class W65C02S
     //                                            n v b d i z c
     // JMP   m -> pc                              - - - - - - -
     //
-    jmp(memfn) {
+    jmp(memfn, opnum) {
         this.reg.pc = memfn.addr();
-        return memfn.cycles;
+        // 0x4c: abs (3), 0x6c: (a) (6), 0x7c: (a,x) (6)
+        return opnum === 0x4c ? 3 : memfn.cycles;
     }
 
     //                                            n v b d i z c
@@ -595,7 +596,7 @@ class W65C02S
     jsr(memfn) {
         this.stack_push_word(this.reg.pc - 1);
         this.reg.pc = memfn.addr();
-        return memfn.cycles;
+        return 6;
     }
 
     //                                            n v b d i z c
@@ -603,7 +604,7 @@ class W65C02S
     //
     lda(memfn) {
         this.reg.a = memfn.read();  // n & z tests are automatic
-        return memfn.cycles;
+        return memfn.cycles + memfn.page_cross_penalty;
     }
 
     //                                            n v b d i z c
@@ -611,7 +612,7 @@ class W65C02S
     //
     ldx(memfn) {
         this.reg.x = memfn.read(); // n & z tests are automatic
-        return memfn.cycles;
+        return memfn.cycles + memfn.page_cross_penalty;
     }
 
     //                                            n v b d i z c
@@ -619,7 +620,7 @@ class W65C02S
     //
     ldy(memfn) {
         this.reg.y = memfn.read(); // n & z tests are automatic
-        return memfn.cycles;
+        return memfn.cycles + memfn.page_cross_penalty;
     }
 
     //                                            n v b d i z c
@@ -649,7 +650,7 @@ class W65C02S
     //
     ora(memfn) {
         this.reg.a |= memfn.read(); // n & z tests are automatic
-        return memfn.cycles;
+        return memfn.cycles + memfn.page_cross_penalty;
     }
 
     //                                            n v b d i z c
@@ -690,7 +691,7 @@ class W65C02S
     //
     pla(memfn) {
         this.reg.a = this.stack_pull_byte();
-        return memfn.cycles;
+        return 4;
     }
 
     //                                            n v b d i z c
@@ -699,7 +700,7 @@ class W65C02S
     plp(memfn) {
         this.reg.flag.value = this.stack_pull_byte();
         this.reg.flag.b = false;
-        return memfn.cycles;
+        return 4;
     }
 
     //                                            n v b d i z c
@@ -707,7 +708,7 @@ class W65C02S
     //
     plx(memfn) {
         this.reg.x = this.stack_pull_byte();
-        return memfn.cycles;
+        return 4;
     }
 
     //                                            n v b d i z c
@@ -715,7 +716,7 @@ class W65C02S
     //
     ply(memfn) {
         this.reg.y = this.stack_pull_byte();
-        return memfn.cycles;
+        return 4;
     }
 
     //                                            n v b d i z c
@@ -763,7 +764,7 @@ class W65C02S
         this.reg.flag.value = this.stack_pull_byte();
         this.reg.flag.b = false;
         this.reg.pc = this.stack_pull_word();
-        return memfn.cycles;
+        return 6;
     }
 
     //                                            n v b d i z c
@@ -771,7 +772,7 @@ class W65C02S
     //
     rts(memfn) {
         this.reg.pc = this.stack_pull_word() + 1;
-        return memfn.cycles;
+        return 6;
     }
 
     //                                            n v b d i z c
@@ -796,7 +797,7 @@ class W65C02S
 
         this.reg.a = res; // n & z tests are automatic
         this.reg.flag.test_c(res);
-        return memfn.cycles;
+        return memfn.cycles + memfn.page_cross_penalty;
     }
 
     //                                            n v b d i z c
@@ -845,7 +846,7 @@ class W65C02S
     // STP   processor halt                       - - - - - - -
     //
     stp(memfn) {
-        return memfn.cycles;// TODO: return -1?
+        return memfn.cycles; // TODO: return -1?
     }
 
     //                                            n v b d i z c
@@ -956,7 +957,7 @@ class W65C02S
         const opfcn = this.op[opcode];
         if(!opfcn) {
             console.log("!!!! illegal opcode: 0x" + opcode.toString(16).padStart(2, '0'));
-            return -1;  // TODO: enter invalid opcodes
+            return -1;
         }
         return opfcn();
     }
@@ -1012,7 +1013,8 @@ class W65C02S
                 write: (val) => { this.ram.write(addr, val); },
                 bytes: 3,
                 cycles: 4,
-                write_extra_cycles: 2
+                write_extra_cycles: 2,
+                page_cross_penalty: 0
             } })(),
 
             // 2. Absolute Indexed Indirect  (a,x)  (used for jmp)
@@ -1020,37 +1022,36 @@ class W65C02S
                 name: "absolute_x_indirect",
                 init: () => { addr = this.ram.read_word((pop_word_pc() + this.reg.x) & 0xffff); },
                 addr: () => { return addr; },
-                //read: () => { return this.ram.read(addr); },
-                //write: (val) => { this.ram.write(addr, val); },
                 bytes: 3,
-                cycles: 5,
-                write_extra_cycles: 0
+                cycles: 6,
+                write_extra_cycles: 0,
+                page_cross_penalty: 0
             } })(),
 
             // 3. Absolute Indexed with X  a,x
-            ((addr) => { return {
+            ((addr, base) => { return {
                 name: "absolute_x",
-                init: () => { addr = (pop_word_pc() + this.reg.x) & 0xffff; },
+                init: () => { base = pop_word_pc(); addr = (base + this.reg.x) & 0xffff; },
                 addr: () => { return addr; },
                 read: () => { return this.ram.read(addr); },
                 write: (val) => { this.ram.write(addr, val); },
                 bytes: 3,
                 cycles: 4,
-                write_extra_cycles: 2
-                // TODO: +1 cycle for page boundary
+                write_extra_cycles: 2,
+                get page_cross_penalty() { return ((base & 0xff00) !== (addr & 0xff00)) ? 1 : 0; }
             } })(),
 
             // 4. Absolute Indexed with Y  a,y
-            ((addr) => { return {
+            ((addr, base) => { return {
                 name: "absolute_y",
-                init: () => { addr = (pop_word_pc() + this.reg.y) & 0xffff; },
+                init: () => { base = pop_word_pc(); addr = (base + this.reg.y) & 0xffff; },
                 addr: () => { return addr; },
                 read: () => { return this.ram.read(addr); },
                 write: (val) => { this.ram.write(addr, val); },
                 bytes: 3,
                 cycles: 4,
-                write_extra_cycles: 0
-                // TODO: +1 cycle for page boundary
+                write_extra_cycles: 0,
+                get page_cross_penalty() { return ((base & 0xff00) !== (addr & 0xff00)) ? 1 : 0; }
             } })(),
 
             // 5. Absolute Indirect  (a)   (used for jmp)
@@ -1058,76 +1059,91 @@ class W65C02S
                 name: "absolute_indirect",
                 init: () => { addr = this.ram.read_word(pop_word_pc()); },
                 addr: () => { return addr; },
-                //read: () => { return this.ram.read(addr); },
-                //write: (val) => { this.ram.write(addr, val); },
                 bytes: 3,
-                cycles: 4,
-                write_extra_cycles: 2
+                cycles: 6,
+                write_extra_cycles: 0,
+                page_cross_penalty: 0
             } })(),
 
             // 6. Accumulator  A
-            ((addr) => { return {
+            ({
                 name: "accumulator",
                 init: () => { },
                 read: () => { return this.reg.a; },
                 write: (val) => { this.reg.a = val; },
                 bytes: 1,
                 cycles: 2,
-                write_extra_cycles: 0
-            } })(),
+                write_extra_cycles: 0,
+                page_cross_penalty: 0
+            }),
 
             // 7. Immediate  #
-            ((addr) => { return {
+            ({
                 name: "immediate",
                 init: () => { },
                 read: () => { return pop_byte_pc(); },
                 bytes: 2,
                 cycles: 2,
-                write_extra_cycles: 0
-            } })(),
+                write_extra_cycles: 0,
+                page_cross_penalty: 0
+            }),
 
             // 8. Implied  i
-            ((addr) => { return {
+            ({
                 name: "implied",
                 init: () => { },
                 bytes: 1,
                 cycles: 2,
-                write_extra_cycles: 0
-            } })(),
+                write_extra_cycles: 0,
+                page_cross_penalty: 0
+            }),
 
             // 9a. Program Counter Relative  r
-            ((offs) => { return {
+            ((offs, target, pc) => { return {
                 name: "relative_pc",
-                init: () => { offs = pop_byte_pc(); },
-                addr: () => { return (this.reg.pc + ((offs & 0x80) ? (offs | 0xff00) : offs)) & 0xffff; },
+                init: () => {
+                    offs = pop_byte_pc();
+                    pc = this.reg.pc;
+                    target = (pc + ((offs & 0x80) ? (offs | 0xff00) : offs)) & 0xffff;
+                },
+                addr: () => { return target; },
                 bytes: 2,
                 cycles: 2,
-                branch_extra_cycles: 1
+                branch_extra_cycles: 1,
+                page_cross_penalty: 0,
+                get branch_page_cross_penalty() { return ((pc & 0xff00) !== (target & 0xff00)) ? 1 : 0; }
             } })(),
 
             // 9b. Zero Page Program Counter Relative  zp,r
             //     note: not explicity described in the w65c02s datasheet
             //       but applies to BBRb zp,offs and BBSb zp,offs operations
             //       BBRb and BBSb are three byte operations
-            ((addr, offs) => { return {
+            ((addr, offs, target, pc) => { return {
                 name: "zero_page_relative_pc",
-                init: () => { addr = pop_byte_pc(); offs = pop_byte_pc(); },
+                init: () => {
+                    addr = pop_byte_pc();
+                    offs = pop_byte_pc();
+                    pc = this.reg.pc;
+                    target = (pc + ((offs & 0x80) ? (offs | 0xff00) : offs)) & 0xffff;
+                },
                 read: () => { return this.ram.read(addr); },
-                addr: () => { return (this.reg.pc + ((offs & 0x80) ? (offs | 0xff00) : offs)) & 0xffff; },
+                addr: () => { return target; },
                 bytes: 3,
-                cycles: 2,
-                branch_extra_cycles: 1
+                cycles: 5,
+                branch_extra_cycles: 1,
+                page_cross_penalty: 0,
+                get branch_page_cross_penalty() { return ((pc & 0xff00) !== (target & 0xff00)) ? 1 : 0; }
             } })(),
 
             // 10. Stack  s
-            ((addr) => { return {
+            ({
                 name: "relative_stack",
                 init: () => { },
                 bytes: 1,  // TODO: up to +3 stack bytes
                 cycles: 3,
-                write_extra_cycles: 0
-                // TODO: +4 cycles possible
-            } })(),
+                write_extra_cycles: 0,
+                page_cross_penalty: 0
+            }),
 
             // 11. Zero Page  zp
             ((addr) => { return {
@@ -1138,7 +1154,8 @@ class W65C02S
                 write: (val) => { this.ram.write(addr, val); },
                 bytes: 2,
                 cycles: 3,
-                write_extra_cycles: 2
+                write_extra_cycles: 2,
+                page_cross_penalty: 0
             } })(),
 
             // 12. Zero Page Indexed Indirect  (zp,x)
@@ -1150,7 +1167,8 @@ class W65C02S
                 write: (val) => { this.ram.write(addr, val); },
                 bytes: 2,
                 cycles: 6,
-                write_extra_cycles: 0
+                write_extra_cycles: 0,
+                page_cross_penalty: 0
             } })(),
 
             // 13. Zero Page Indexed with X  zp,x
@@ -1162,7 +1180,8 @@ class W65C02S
                 write: (val) => { this.ram.write(addr, val); },
                 bytes: 2,
                 cycles: 4,
-                write_extra_cycles: 2
+                write_extra_cycles: 2,
+                page_cross_penalty: 0
             } })(),
 
             // 14. Zero Page Indexed with Y  zp,y
@@ -1174,7 +1193,8 @@ class W65C02S
                 write: (val) => { this.ram.write(addr, val); },
                 bytes: 2,
                 cycles: 4,
-                write_extra_cycles: 0
+                write_extra_cycles: 0,
+                page_cross_penalty: 0
             } })(),
 
             // 15. Zero Page Indirect  (zp)
@@ -1186,19 +1206,21 @@ class W65C02S
                 write: (val) => { this.ram.write(addr, val); },
                 bytes: 2,
                 cycles: 5,
-                write_extra_cycles: 0
+                write_extra_cycles: 0,
+                page_cross_penalty: 0
             } })(),
 
             // 16. Zero Page Indirect Indexed with Y  (zp),y
-            ((addr) => { return {
+            ((addr, base) => { return {
                 name: "zero_page_indirect_y",
-                init: () => { addr = (this.ram.read_word(pop_byte_pc()) + this.reg.y) & 0xffff; },
+                init: () => { base = this.ram.read_word(pop_byte_pc()); addr = (base + this.reg.y) & 0xffff; },
                 addr: () => { return addr; },
                 read: () => { return this.ram.read(addr); },
                 write: (val) => { this.ram.write(addr, val); },
                 bytes: 2,
                 cycles: 5,
-                write_extra_cycles: 0
+                write_extra_cycles: 0,
+                get page_cross_penalty() { return ((base & 0xff00) !== (addr & 0xff00)) ? 1 : 0; }
             } })()
         ];
 
