@@ -33,6 +33,12 @@ class TestMemory {
     }
 }
 
+// Known success addresses for Klaus Dormann tests
+const KNOWN_SUCCESS_ADDRESSES = {
+    0x3469: '6502 functional test',
+    0x24f1: '65C02 extended opcodes test'
+};
+
 class TestRunner {
     constructor(config) {
         this.config = {
@@ -50,6 +56,32 @@ class TestRunner {
         this.stopRequested = false;
         this.traceLog = new Array(50).fill(null);
         this.traceIndex = 0;
+    }
+
+    // Detect infinite loop instructions at current PC
+    // Returns { isLoop: true, type: 'JMP *' } or { isLoop: false }
+    detectInfiniteLoop(pc) {
+        const opcode = this.memory.read(pc);
+
+        // JMP absolute: 0x4C ll hh - check if target equals pc
+        if (opcode === 0x4c) {
+            const lo = this.memory.read((pc + 1) & 0xffff);
+            const hi = this.memory.read((pc + 2) & 0xffff);
+            const target = (hi << 8) | lo;
+            if (target === pc) {
+                return { isLoop: true, type: 'JMP *' };
+            }
+        }
+
+        // BRA relative: 0x80 offset - check if offset is -2 (0xFE)
+        if (opcode === 0x80) {
+            const offset = this.memory.read((pc + 1) & 0xffff);
+            if (offset === 0xfe) {
+                return { isLoop: true, type: 'BRA *' };
+            }
+        }
+
+        return { isLoop: false };
     }
 
     loadTest(binaryData) {
@@ -70,9 +102,6 @@ class TestRunner {
         this.stopRequested = false;
 
         let cycles = 0;
-        let lastPC = -1;
-        let stuckCount = 0;
-        const STUCK_THRESHOLD = 10;
         let lastProgressUpdate = 0;
 
         // Run in chunks to keep UI responsive
@@ -107,38 +136,34 @@ class TestRunner {
                     };
                 }
 
-                // Check if we're stuck at the success address
-                if (pc === this.config.successAddress) {
-                    if (lastPC === pc) {
-                        stuckCount++;
-                        if (stuckCount >= STUCK_THRESHOLD) {
-                            this.running = false;
-                            return {
-                                success: true,
-                                cycles: cycles,
-                                finalPC: pc,
-                                message: 'All tests passed!',
-                                registers: this.getRegisterState()
-                            };
-                        }
-                    } else {
-                        stuckCount = 0;
-                    }
-                } else {
-                    stuckCount = 0;
-                }
+                // Check for infinite loop (JMP * or BRA *)
+                const loopInfo = this.detectInfiniteLoop(pc);
+                if (loopInfo.isLoop) {
+                    this.running = false;
+                    const isSuccess = pc === this.config.successAddress;
+                    const testName = KNOWN_SUCCESS_ADDRESSES[pc];
+                    const addrStr = `0x${pc.toString(16).padStart(4, '0')}`;
 
-                // Check if we're stuck at a different address (test failure)
-                if (lastPC === pc && pc !== this.config.successAddress) {
-                    stuckCount++;
-                    if (stuckCount >= STUCK_THRESHOLD) {
-                        this.running = false;
+                    if (isSuccess) {
+                        return {
+                            success: true,
+                            cycles: cycles,
+                            finalPC: pc,
+                            loopType: loopInfo.type,
+                            message: testName
+                                ? `All tests passed! (${testName})`
+                                : `All tests passed!`,
+                            detail: `Infinite loop detected: ${loopInfo.type} at ${addrStr}`,
+                            registers: this.getRegisterState()
+                        };
+                    } else {
                         const opcode = this.memory.read(pc);
                         return {
                             success: false,
                             cycles: cycles,
                             finalPC: pc,
-                            message: `Test FAILED - stuck at 0x${pc.toString(16).padStart(4, '0')}`,
+                            loopType: loopInfo.type,
+                            message: `Test FAILED - ${loopInfo.type} at ${addrStr}`,
                             registers: this.getRegisterState(),
                             stuckOpcode: opcode,
                             memoryContext: this.getMemoryContext(pc),
@@ -146,8 +171,6 @@ class TestRunner {
                         };
                     }
                 }
-
-                lastPC = pc;
 
                 // Record trace
                 this.traceLog[this.traceIndex] = {

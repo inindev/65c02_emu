@@ -132,6 +132,11 @@ class TestUI {
         html += `<p><strong>Time elapsed:</strong> ${elapsed}s</p>`;
         html += `<p><strong>Final PC:</strong> 0x${result.finalPC.toString(16).padStart(4, '0')}</p>`;
 
+        // Show loop detection detail if available
+        if (result.detail) {
+            html += `<p><strong>Detection:</strong> ${result.detail}</p>`;
+        }
+
         if (result.registers) {
             html += '<h4>Register State:</h4>';
             html += '<div class="registers">';
